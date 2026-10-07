@@ -4,19 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Registre de judicis</title>
-<!-- Favicon SVG per a pestanyes i pantalles d'inici -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%231f4e9c'/><path d='M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='130' r='30' fill='%2358c58a'/></svg>">
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f}}
-:root[data-theme="dark"]{--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 main{max-width:720px;margin:0 auto;padding:14px}
 h1{font-size:20px;margin:4px 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .brand{display:flex;align-items:center;gap:10px}
-.brand-icon{width:36px;height:36px;border-radius:9px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-icon{width:36px;height:36px;border-radius:99px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .brand-icon svg{width:22px;height:22px;display:block}
 button,.btn,.btn-label{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 13px;border-radius:9px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
 .pri{background:var(--ac);color:#fff;border-color:var(--ac)}
@@ -36,7 +33,7 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .mu{color:var(--mu);font-size:13px}
 </style>
-<script src="https://accounts.google.com/gsi/client" onload="initGoogleAuth()" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <main id="app"></main>
@@ -50,7 +47,7 @@ var filter = 'todos';
 var tokenClient = null;
 var accessToken = localStorage.getItem('gdrive_token') || null;
 
-function \$(s) { return document.querySelector(s); }
+function $(s) { return document.querySelector(s); }
 
 function esc(s) {
   if (s === null || s === undefined) return '';
@@ -76,33 +73,372 @@ function lsWrite() {
 function init() {
   items = lsRead();
   render();
-  initGoogleAuth();
-}
-
-function initGoogleAuth() {
-  if (typeof google === 'undefined' || !google.accounts) return;
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: function(res) {
-      if (res.access_token) {
-        accessToken = res.access_token;
-        localStorage.setItem('gdrive_token', accessToken);
-        render();
-        syncDriveAuto();
-      }
-    }
-  });
-  if (accessToken) {
-    syncDriveAuto();
-  }
 }
 
 function connectDrive() {
-  if (!tokenClient) {
-    initGoogleAuth();
+  if (typeof google === 'undefined' || !google.accounts) {
+    alert('S\'està carregant el servei de Google. Prova-ho en uns segons.');
+    return;
   }
-  if (tokenClient) {
-    tokenClient.requestAccessToken();
+  if (!tokenClient) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: function(res) {
+        if (res.access_token) {
+          accessToken = res.access_token;
+          localStorage.setItem('gdrive_token', accessToken);
+          render();
+          syncDriveAuto();
+        }
+      }
+    });
+  }
+  tokenClient.requestAccessToken();
+}
+
+function syncDriveAuto() {
+  if (!accessToken) return;
+  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27judicis_backup.json%27%20and%20trashed%3Dfalse', {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.files && data.files.length > 0) {
+      var fileId = data.files[0].id;
+      fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+        headers: { 'Authorization': 'Bearer ' + accessToken }
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(raw) {
+        var importedItems = Array.isArray(raw) ? raw : (raw.data || []);
+        var remoteDate = raw.updatedAt ? new Date(raw.updatedAt) : null;
+        var localDateStr = localStorage.getItem('juicios_updated');
+        var localDate = localDateStr ? new Date(localDateStr) : null;
+
+        if (remoteDate && localDate && remoteDate > localDate) {
+          if (confirm('S\'han trobat dades MÉS RECENTS a Google Drive (' + remoteDate.toLocaleString('ca-ES') + ').\n\nVols actualitzar les teves dades locals?')) {
+            items = importedItems;
+            lsWrite();
+            render();
+            alert('Sincronitzat amb èxit des de Google Drive!');
+          }
+        }
+      });
+    }
+  })
+  .catch(function(err) {
+    console.log('Error amb Drive:', err);
+  });
+}
+
+function saveToDrive() {
+  if (!accessToken) {
+    alert('Connecta primer el teu compte de Google Drive.');
+    return;
+  }
+  var payload = {
+    updatedAt: new Date().toISOString(),
+    count: items.length,
+    data: items
+  };
+
+  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27judicis_backup.json%27%20and%20trashed%3Dfalse', {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    if (data.files && data.files.length > 0) {
+      var fileId = data.files[0].id;
+      fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media', {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: blob
+      }).then(function() { alert('Desat i sincronitzat a Google Drive amb èxit!'); });
+    } else {
+      var metadata = { name: 'judicis_backup.json', mimeType: 'application/json' };
+      var form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', blob);
+
+      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + accessToken },
+        body: form
+      }).then(function() { alert('Còpia creada a Google Drive amb èxit!'); });
+    }
+  });
+}
+
+function save(j) {
+  var i = items.findIndex(function(x) { return x.id === j.id; });
+  if (i < 0) { items.push(Object.assign({}, j)); } else { items[i] = Object.assign({}, j); }
+  lsWrite();
+}
+
+function remove(id) {
+  items = items.filter(function(x) { return x.id !== id; });
+  lsWrite();
+}
+
+function status(j) {
+  if (j.celebrado === 'no' || j.celebrado === 'suspendido') return ['Suspès', 'er'];
+  if (j.celebrado !== 'si') return ['Pendent', 'wa'];
+  if (j.cobrado) return ['Cobrat', 'ok'];
+  if (j.dad67) return ['DAD 67 presentada', 'wa'];
+  return ['Celebrat · falta DAD 67', 'wa'];
+}
+
+function calUrl(j) {
+  if (!j.fecha) return '#';
+  var d = j.fecha.replace(/-/g, '');
+  var h = (j.hora || '09:00').split(':');
+  var s = h[0] + h[1] + '00';
+  var e = String(Math.min(23, Number(h[0]) + 2)).padStart(2, '0') + h[1] + '00';
+  var det = ['Expedient: ' + (j.expedient || ''), 'Procediment: ' + (j.proc || ''), 'Òrgan: ' + (j.juzgado || ''), 'Sala: ' + (j.sala || ''), 'Atestat: ' + (j.atestado || ''), 'Qualitat: ' + (j.qualitat || ''), 'Modalitat: ' + (j.modalidadPrev || ''), j.notas || ''].join('\n');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent((j.objecte || 'Judici') + ' ' + (j.proc || j.expedient || '')) + '&dates=' + d + 'T' + s + '/' + d + 'T' + e + '&ctz=Europe/Madrid&location=' + encodeURIComponent([j.juzgado, j.adreca, j.sala].filter(Boolean).join(', ')) + '&details=' + encodeURIComponent(det);
+}
+
+function exportBackup() {
+  var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items };
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+  var downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", "judicis_backup.json");
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function checkAndImportBackup(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var raw = JSON.parse(e.target.result);
+      var importedItems = Array.isArray(raw) ? raw : (raw.data || []);
+      if (confirm('Vols restaurar les dades d\'aquest fitxer local?')) {
+        items = importedItems;
+        lsWrite();
+        render();
+        alert('Dades actualitzades correctament!');
+      }
+    } catch (err) {
+      alert('Error en llegir el fitxer JSON.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function render() {
+  var app = $('#app');
+  if (!app) return;
+  
+  var logoSvg = '<div class="brand-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="380" cy="130" r="30" fill="#58c58a"/></svg></div>';
+
+  if (view === 'list') {
+    var list = items.filter(function(j) {
+      if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
+      if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
+      if (filter === 'cobro') return j.celebrado === 'si' && !j.cobrado;
+      return true;
+    }).sort(function(a, b) {
+      return (b.fecha || '').localeCompare(a.fecha || '');
+    });
+
+    var html = '<h1><div class="brand">' + logoSvg + '<span>Judicis</span></div><button class="pri" onclick="edit()">+ Nou</button></h1>';
+    html += '<select onchange="filter=this.value;render()" style="margin-bottom:12px">';
+    html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
+    html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
+    html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
+    html += '<option value="cobro"' + (filter === 'cobro' ? ' selected' : '') + '>Pendents de cobrament</option>';
+    html += '</select>';
+
+    if (list.length) {
+      list.forEach(function(j) {
+        var st = status(j);
+        html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
+        html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
+        html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
+        html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
+        if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
+        if (j.justificante) html += '<span class="tag ok">Justificant</span>';
+        if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
+        if (j.celebrado === 'si') html += '<span class="tag">' + (j.modalidad === 'video' ? 'Videoconferència' : 'Presencial') + '</span>';
+        html += '</div></div>';
+      });
+    } else {
+      html += '<p class="mu">Encara no hi ha judicis. Prem «+ Nou».</p>';
+    }
+    
+    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
+    if (accessToken) {
+      html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive.</p>';
+      html += '<div class="bar" style="margin-top:8px">';
+      html += '<button class="pri" onclick="saveToDrive()">☁️ Desar / Actualitzar a Drive</button>';
+      html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
+      html += '</div>';
+    } else {
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
+      html += '<div class="bar" style="margin-top:8px">';
+      html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
+      html += '</div>';
+    }
+
+    html += '<h2>Còpia local manual (JSON)</h2>';
+    html += '<div class="bar" style="margin-top:8px">';
+    html += '<button onclick="exportBackup()">📥 Exportar fitxer</button>';
+    html += '<label class="btn-label" style="margin:0;cursor:pointer">📤 Importar fitxer<input type="file" id="fileImport" accept=".json" style="position:absolute;opacity:0;width:1px;height:1px" onchange="checkAndImportBackup(event)"></label>';
+    html += '</div></div>';
+
+    html += '<p class="mu">Les dades es desen localment al navegador.</p>';
+    app.innerHTML = html;
+    return;
+  }
+
+  var j = cur;
+  var v = function(k) { return esc(j[k] || ''); };
+  var ck = function(k) { return j[k] ? 'checked' : ''; };
+  var isNew = !items.some(function(x) { return x.id === j.id; });
+
+  var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="back()">Tancar</button></h1>';
+  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>';
+  if (isNew) {
+    fHtml += '<label>Enganxar la citació (omple els camps automàticament)</label><textarea id="paste" placeholder="Enganxa aquí el text de la citació…"></textarea><div class="bar" style="margin-top:6px"><button onclick="parsePaste()">Omplir des del text</button></div>';
+  }
+  fHtml += '<label>Expedient</label><input id="expedient" value="' + v('expedient') + '">';
+  fHtml += '<div class="g2"><div><label>Procediment</label><input id="proc" value="' + v('proc') + '"></div><div><label>Atestat</label><input id="atestado" value="' + v('atestado') + '"></div></div>';
+  fHtml += '<label>Òrgan jurisdiccional</label><input id="juzgado" value="' + v('juzgado') + '">';
+  fHtml += '<label>Adreça</label><input id="adreca" value="' + v('adreca') + '">';
+  fHtml += '<div class="g2"><div><label>Telèfon</label><input id="telefon" type="tel" value="' + v('telefon') + '"></div><div><label>Fax</label><input id="fax" type="tel" value="' + v('fax') + '"></div></div>';
+  fHtml += '<div class="g2"><div><label>Qualitat de la compareixença</label><input id="qualitat" value="' + v('qualitat') + '"></div><div><label>Sala</label><input id="sala" value="' + v('sala') + '"></div></div>';
+  fHtml += '<label>Objecte de la compareixença</label><input id="objecte" value="' + v('objecte') + '">';
+  fHtml += '<div class="g2"><div><label>Data</label><input type="date" id="fecha" value="' + v('fecha') + '"></div><div><label>Hora</label><input type="time" id="hora" value="' + v('hora') + '"></div></div>';
+  fHtml += '<label>Modalitat prevista</label><select id="modalidadPrev"><option value="presencial"' + (j.modalidadPrev !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidadPrev === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
+  fHtml += '<label>Notes</label><textarea id="notas">' + v('notas') + '</textarea>';
+  fHtml += '<div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="' + calUrl(j) + '">📅 Afegir a Google Calendar</a></div>';
+  fHtml += '<p class="mu">S\'obre Google Calendar amb l\'esdeveniment a punt per confirmar.</p></div>';
+  
+  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Seguiment</h2>';
+  fHtml += '<label>S\'ha celebrat?</label><select id="celebrado">';
+  [['', 'Pendent'], ['si', 'Sí'], ['no', 'No'], ['suspendido', 'Suspès']].forEach(function(o) {
+    fHtml += '<option value="' + o[0] + '"' + ((j.celebrado || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+  });
+  fHtml += '</select>';
+  fHtml += '<label>Modalitat real</label><select id="modalidad"><option value="presencial"' + (j.modalidad !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidad === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
+  fHtml += '<div class="g2"><div><label>Hora d\'arribada</label><input type="time" id="llegada" value="' + v('llegada') + '"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '"></div></div>';
+  fHtml += '<label>Minuta policial</label><textarea id="minuta">' + v('minuta') + '</textarea>';
+  fHtml += '<label>Persones denunciades</label><textarea id="denunciados">' + v('denunciados') + '</textarea>';
+  fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos">' + v('testigos') + '</textarea>';
+  fHtml += '<h2>Cobrament</h2>';
+  fHtml += '<label class="chk"><input type="checkbox" id="justificante" ' + ck('justificante') + '> Tinc el justificant</label>';
+  fHtml += '<label class="chk"><input type="checkbox" id="dad67" ' + ck('dad67') + '> Sol·licitud DAD 67 presentada</label>';
+  fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '"></div>';
+  fHtml += '<label class="chk"><input type="checkbox" id="cobrado" ' + ck('cobrado') + '> Cobrat</label>';
+  fHtml += '<div><label>Data de cobrament</label><input type="date" id="cobradoFecha" value="' + v('cobradoFecha') + '"></div></div>';
+  
+  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Fitxers de l\'expedient</h2>';
+  if (j.files && j.files.length) {
+    j.files.forEach(function(f, i) {
+      var dAttr = f.link ? 'target="_blank" rel="noopener"' : 'download="' + esc(f.name) + '"';
+      fHtml += '<div class="row" style="align-items:center;justify-content:space-between"><a href="' + esc(f.url) + '" ' + dAttr + '>📎 ' + esc(f.name) + '</a><button class="dan" onclick="rmFile(' + i + ')">Treure</button></div>';
+    });
   } else {
-    alert('S\'està carregant el serve
+    fHtml += '<p class="mu">Sense fitxers.</p>';
+  }
+  
+  fHtml += '<label style="margin-top:10px">Pujar fitxer local (PDF, imatge...)</label>';
+  fHtml += '<input type="file" id="fileDirect" onchange="uploadFile(event)">';
+  
+  fHtml += '<label style="margin-top:10px">O afegir un enllaç extern (Drive, Dropbox...)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>';
+  
+  fHtml += '<div class="bar"><button class="pri" onclick="sv()">Desar</button>' + (isNew ? '' : '<button class="dan" onclick="del()">Eliminar</button>') + '</div>';
+
+  app.innerHTML = fHtml;
+}
+
+var F = ['expedient','proc','atestado','juzgado','adreca','fax','telefon','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'];
+var C = ['justificante','dad67','cobrado'];
+
+function collect() {
+  F.forEach(function(k) { if ($('#'+k)) cur[k] = $('#'+k).value; });
+  C.forEach(function(k) { if ($('#'+k)) cur[k] = $('#'+k).checked; });
+}
+
+function sync() { collect(); $('#cal').href = calUrl(cur); }
+function sv() { collect(); save(cur); if (accessToken) saveToDrive(); back(); }
+function del() { if (confirm('Vols eliminar aquest judici?')) { remove(cur.id); if (accessToken) saveToDrive(); back(); } }
+
+function uploadFile(event) {
+  collect();
+  var file = event.target.files[0];
+  if (!file) return;
+  
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    cur.files = cur.files || [];
+    cur.files.push({ name: file.name, url: e.target.result, link: false });
+    save(cur);
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+
+function addLink() {
+  collect();
+  var u = $('#lurl').value.trim();
+  if (!/^https?:\/\//i.test(u)) { alert('Escriu un enllaç que comenci per https://'); return; }
+  cur.files = cur.files || [];
+  cur.files.push({ name: $('#lname').value.trim() || u, url: u, link: true });
+  save(cur);
+  render();
+}
+
+function rmFile(i) { collect(); cur.files.splice(i, 1); save(cur); render(); }
+
+function parsePaste() {
+  collect();
+  var t = $('#paste').value;
+  var g = function(r) { var m = t.match(r); return m ? m[1].trim() : ''; };
+  var st = function(k, v) { if (v) cur[k] = v; };
+
+  st('expedient', g(/Expedient:?\s*([^\n]+)/i));
+  st('juzgado', g(/[ÒO]rgan jurisdiccional:?\s*([^\n]+)/i));
+  st('adreca', g(/Adre[çc]a:?\s*([^\n]+)/i));
+  st('fax', g(/Fax:?\s*([^\n]+)/i));
+  st('telefon', g(/Tel[èe]fon:?\s*([^\n]+)/i));
+  
+  var d = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})[ \t]*([^\n]*)/);
+  if (d) {
+    cur.fecha = d[3] + '-' + d[2].padStart(2, '0') + '-' + d[1].padStart(2, '0');
+    cur.hora = d[4].padStart(2, '0') + ':' + d[5];
+    cur.sala = d[6].trim();
+  }
+  
+  st('atestado', g(/Atestat:?\s*([^\n]+)/i));
+  st('proc', g(/Procediment:?\s*([^\n]+)/i));
+  st('qualitat', g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
+  st('objecte', g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
+  render();
+}
+
+function edit(id) {
+  if (id) {
+    var found = items.find(function(x) { return x.id === id; });
+    cur = Object.assign({}, found);
+  } else {
+    cur = { id: 'j' + Date.now().toString(36) };
+  }
+  view = 'form';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function back() { view = 'list'; cur = null; render(); }
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
