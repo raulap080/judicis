@@ -89,7 +89,7 @@ var items = [];
 var view = 'list';
 var cur = null;
 var filter = 'todos';
-var sortBy = 'fecha_desc';
+var sortBy = 'proximos';
 var currentPage = 1;
 var pageSize = 10;
 var tokenClient = null;
@@ -300,14 +300,19 @@ function render() {
   var logoSvg = '<div class="brand-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="380" cy="130" r="30" fill="#58c58a"/></svg></div>';
 
   if (view === 'list') {
+    var todayStr = new Date().toISOString().split('T')[0];
+
     var list = items.filter(function(j) {
+      if (sortBy === 'proximos') {
+        if (!j.fecha || j.fecha < todayStr) return false;
+      }
       if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
       if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
       if (filter === 'cobro') return j.celebrado === 'si' && !j.cobrado;
       return true;
     }).sort(function(a, b) {
+      if (sortBy === 'proximos' || sortBy === 'fecha_asc') return (a.fecha || '').localeCompare(b.fecha || '');
       if (sortBy === 'fecha_desc') return (b.fecha || '').localeCompare(a.fecha || '');
-      if (sortBy === 'fecha_asc') return (a.fecha || '').localeCompare(b.fecha || '');
       if (sortBy === 'proc') return (a.proc || a.expedient || '').localeCompare(b.proc || b.expedient || '');
       if (sortBy === 'juzgado') return (a.juzgado || '').localeCompare(b.juzgado || '');
       if (sortBy === 'estado') return status(a)[0].localeCompare(status(b)[0]);
@@ -335,9 +340,10 @@ function render() {
     html += '</select></div>';
 
     html += '<div><label style="margin:0 0 2px 2px">Ordenar per</label>';
-    html += '<select onchange="sortBy=this.value;render()">';
-    html += '<option value="fecha_desc"' + (sortBy === 'fecha_desc' ? ' selected' : '') + '>📅 Data (més recents)</option>';
-    html += '<option value="fecha_asc"' + (sortBy === 'fecha_asc' ? ' selected' : '') + '>📅 Data (més antics)</option>';
+    html += '<select onchange="sortBy=this.value;currentPage=1;render()">';
+    html += '<option value="proximos"' + (sortBy === 'proximos' ? ' selected' : '') + '>🔮 Propers judicis (de més a menys proper)</option>';
+    html += '<option value="fecha_desc"' + (sortBy === 'fecha_desc' ? ' selected' : '') + '>📅 Data (més recents primer)</option>';
+    html += '<option value="fecha_asc"' + (sortBy === 'fecha_asc' ? ' selected' : '') + '>📅 Data (més antics primer)</option>';
     html += '<option value="proc"' + (sortBy === 'proc' ? ' selected' : '') + '>📄 Núm. procediment / exp.</option>';
     html += '<option value="juzgado"' + (sortBy === 'juzgado' ? ' selected' : '') + '>🏛️ Òrgan jurisdiccional</option>';
     html += '<option value="estado"' + (sortBy === 'estado' ? ' selected' : '') + '>🏷️ Estat / Situació</option>';
@@ -374,7 +380,7 @@ function render() {
         html += '</div>';
       }
     } else {
-      html += '<p class="mu">Encara no hi ha judicis en aquesta secció. Prem «+ Nou».</p>';
+      html += '<p class="mu">No hi ha cap judici futur agendat.</p>';
     }
     
     html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
