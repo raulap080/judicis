@@ -57,7 +57,10 @@ function lsRead() {
 }
 
 function lsWrite() {
-  try { localStorage.setItem('juicios', JSON.stringify(items)); } catch (e) {}
+  try { 
+    localStorage.setItem('juicios', JSON.stringify(items));
+    localStorage.setItem('juicios_updated', new Date().toISOString());
+  } catch (e) {}
 }
 
 function init() {
@@ -95,37 +98,46 @@ function calUrl(j) {
 }
 
 function exportBackup() {
-  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items, null, 2));
+  var payload = {
+    updatedAt: new Date().toISOString(),
+    count: items.length,
+    data: items
+  };
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
   var downloadAnchor = document.createElement('a');
-  var dateStr = new Date().toISOString().slice(0, 10);
   downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", "copia_seguretat_judicis_" + dateStr + ".json");
+  downloadAnchor.setAttribute("download", "judicis_backup.json");
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
 }
 
-function importBackup(event) {
+function checkAndImportBackup(event) {
   var file = event.target.files[0];
   if (!file) return;
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
-      var importedData = JSON.parse(e.target.result);
-      if (Array.isArray(importedData)) {
-        if (confirm('Vols restaurar aquesta còpia? S\'afegiran les dades a les que ja tens registrades.')) {
-          var currentIds = new Set(items.map(function(x) { return x.id; }));
-          importedData.forEach(function(item) {
-            if (!currentIds.has(item.id)) {
-              items.push(item);
-            }
-          });
-          lsWrite();
-          render();
-          alert('Còpia de seguretat importada amb èxit!');
+      var raw = JSON.parse(e.target.result);
+      var importedItems = Array.isArray(raw) ? raw : (raw.data || []);
+      var importedDate = raw.updatedAt ? new Date(raw.updatedAt) : null;
+      var localDateStr = localStorage.getItem('juicios_updated');
+      var localDate = localDateStr ? new Date(localDateStr) : null;
+
+      var diffMsg = 'El fitxer té ' + importedItems.length + ' judicis (actuals: ' + items.length + ').';
+      if (importedDate && localDate) {
+        if (importedDate > localDate) {
+          diffMsg = 'S\'han detectat dades MÉS RECENTS al fitxer de Drive (' + importedDate.toLocaleString('ca-ES') + ').';
+        } else {
+          diffMsg = 'El fitxer sembla MÉS ANTIC que les teves dades locals (' + importedDate.toLocaleString('ca-ES') + ').';
         }
-      } else {
-        alert('El fitxer no té un format vàlid.');
+      }
+
+      if (confirm(diffMsg + '\n\nVols actualitzar les dades de l\'aplicació amb aquest fitxer?')) {
+        items = importedItems;
+        lsWrite();
+        render();
+        alert('Dades actualitzades correctament!');
       }
     } catch (err) {
       alert('Error en llegir el fitxer JSON.');
@@ -172,15 +184,15 @@ function render() {
       html += '<p class="mu">Encara no hi ha judicis. Prem «+ Nou».</p>';
     }
     
-    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Còpies de seguretat</h2>';
-    html += '<p class="mu" style="margin-top:0">Pots guardar un arxiu amb totes les teves dades o carregar-ne un de previ.</p>';
+    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització amb Google Drive</h2>';
+    html += '<p class="mu" style="margin-top:0">Guarda el fitxer <code>judicis_backup.json</code> a la teva carpeta de Google Drive per tenir-lo disponible a tots els dispositius.</p>';
     html += '<div class="bar" style="margin-top:8px">';
-    html += '<button onclick="exportBackup()">📥 Exportar còpia</button>';
-    html += '<button onclick="$(\'#fileImport\').click()">📤 Importar còpia</button>';
-    html += '<input type="file" id="fileImport" accept=".json" style="display:none" onchange="importBackup(event)">';
+    html += '<button onclick="exportBackup()">📥 Desar / Exportar a Drive</button>';
+    html += '<button class="pri" onclick="$(\'#fileImport\').click()">🔄 Comprovar / Sincronitzar Drive</button>';
+    html += '<input type="file" id="fileImport" accept=".json" style="display:none" onchange="checkAndImportBackup(event)">';
     html += '</div></div>';
 
-    html += '<p class="mu">Les dades es desen localment al navegador.</p>';
+    html += '<p class="mu">Les dades es den localment al navegador.</p>';
     app.innerHTML = html;
     return;
   }
