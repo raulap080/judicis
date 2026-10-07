@@ -88,8 +88,11 @@ var SCOPES = 'https://www.googleapis.com/auth/drive.file';
 var items = [];
 var view = 'list';
 var cur = null;
-var filter = 'todos';
-var sortBy = 'proximos';
+
+// Llegim el darrer filtre i ordenació desat, o establim valors per defecte
+var filter = localStorage.getItem('juicios_filter') || 'todos';
+var sortBy = localStorage.getItem('juicios_sort') || 'proximos';
+
 var currentPage = 1;
 var pageSize = 10;
 var tokenClient = null;
@@ -116,6 +119,20 @@ function lsWrite() {
     localStorage.setItem('juicios', JSON.stringify(items));
     localStorage.setItem('juicios_updated', new Date().toISOString());
   } catch (e) {}
+}
+
+function setFilter(v) {
+  filter = v;
+  localStorage.setItem('juicios_filter', v);
+  currentPage = 1;
+  render();
+}
+
+function setSort(v) {
+  sortBy = v;
+  localStorage.setItem('juicios_sort', v);
+  currentPage = 1;
+  render();
 }
 
 function init() {
@@ -332,7 +349,7 @@ function render() {
     
     html += '<div class="g2" style="margin-bottom:8px">';
     html += '<div><label style="margin:0 0 2px 2px">Filtrar</label>';
-    html += '<select onchange="filter=this.value;currentPage=1;render()">';
+    html += '<select onchange="setFilter(this.value)">';
     html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
     html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
     html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
@@ -340,7 +357,7 @@ function render() {
     html += '</select></div>';
 
     html += '<div><label style="margin:0 0 2px 2px">Ordenar per</label>';
-    html += '<select onchange="sortBy=this.value;currentPage=1;render()">';
+    html += '<select onchange="setSort(this.value)">';
     html += '<option value="proximos"' + (sortBy === 'proximos' ? ' selected' : '') + '>🔮 Propers judicis (de més a menys proper)</option>';
     html += '<option value="fecha_desc"' + (sortBy === 'fecha_desc' ? ' selected' : '') + '>📅 Data (més recents primer)</option>';
     html += '<option value="fecha_asc"' + (sortBy === 'fecha_asc' ? ' selected' : '') + '>📅 Data (més antics primer)</option>';
@@ -380,7 +397,7 @@ function render() {
         html += '</div>';
       }
     } else {
-      html += '<p class="mu">No hi ha cap judici futur agendat.</p>';
+      html += '<p class="mu">No s\'ha trobat cap judici amb aquesta combinació de filtre i ordenació.</p>';
     }
     
     html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
