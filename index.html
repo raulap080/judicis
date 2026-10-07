@@ -31,12 +31,12 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .mu{color:var(--mu);font-size:13px}
 </style>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://accounts.google.com/gsi/client" onload="initGoogleAuth()" async defer></script>
 </head>
 <body>
 <main id="app"></main>
 <script>
-var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com'; // Recorda posar aquí el teu Client ID
+var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com'; // SUBSTITUEIX PEL TEU CLIENT ID REAL DE GOOGLE
 var SCOPES = 'https://www.googleapis.com/auth/drive.file';
 var items = [];
 var view = 'list';
@@ -75,7 +75,9 @@ function init() {
 }
 
 function initGoogleAuth() {
-  if (typeof google === 'undefined') return;
+  if (typeof google === 'undefined' || !google.accounts) return;
+  if (!CLIENT_ID || CLIENT_ID === 'EL_TEU_CLIENT_ID_AQUI') return;
+  
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
@@ -94,10 +96,17 @@ function initGoogleAuth() {
 }
 
 function connectDrive() {
+  if (!CLIENT_ID || CLIENT_ID === 'EL_TEU_CLIENT_ID_AQUI') {
+    alert('S\'ha de configurar el Client ID de Google al codi HTML.');
+    return;
+  }
+  if (!tokenClient) {
+    initGoogleAuth();
+  }
   if (tokenClient) {
     tokenClient.requestAccessToken();
   } else {
-    alert('S\'està carregant el servei de Google. Torna-ho a provar en un moment.');
+    alert('S\'està carregant el servei de Google o la connexió ha fallat. Revisa que el Client ID sigui correcte.');
   }
 }
 
@@ -282,7 +291,7 @@ function render() {
       html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
       html += '</div>';
     } else {
-      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament entre mòbil i ordinador.</p>';
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per synchronitzar les teves dades automàticament entre mòbil i ordinador.</p>';
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
       html += '</div>';
