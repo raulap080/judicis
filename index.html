@@ -94,6 +94,46 @@ function calUrl(j) {
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent((j.objecte || 'Judici') + ' ' + (j.proc || j.expedient || '')) + '&dates=' + d + 'T' + s + '/' + d + 'T' + e + '&ctz=Europe/Madrid&location=' + encodeURIComponent([j.juzgado, j.adreca, j.sala].filter(Boolean).join(', ')) + '&details=' + encodeURIComponent(det);
 }
 
+function exportBackup() {
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items, null, 2));
+  var downloadAnchor = document.createElement('a');
+  var dateStr = new Date().toISOString().slice(0, 10);
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", "copia_seguretat_judicis_" + dateStr + ".json");
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function importBackup(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var importedData = JSON.parse(e.target.result);
+      if (Array.isArray(importedData)) {
+        if (confirm('Vols restaurar aquesta còpia? S\'afegiran les dades a les que ja tens registrades.')) {
+          var currentIds = new Set(items.map(function(x) { return x.id; }));
+          importedData.forEach(function(item) {
+            if (!currentIds.has(item.id)) {
+              items.push(item);
+            }
+          });
+          lsWrite();
+          render();
+          alert('Còpia de seguretat importada amb èxit!');
+        }
+      } else {
+        alert('El fitxer no té un format vàlid.');
+      }
+    } catch (err) {
+      alert('Error en llegir el fitxer JSON.');
+    }
+  };
+  reader.readAsText(file);
+}
+
 function render() {
   var app = $('#app');
   if (!app) return;
@@ -131,6 +171,15 @@ function render() {
     } else {
       html += '<p class="mu">Encara no hi ha judicis. Prem «+ Nou».</p>';
     }
+    
+    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Còpies de seguretat</h2>';
+    html += '<p class="mu" style="margin-top:0">Pots guardar un arxiu amb totes les teves dades o carregar-ne un de previ.</p>';
+    html += '<div class="bar" style="margin-top:8px">';
+    html += '<button onclick="exportBackup()">📥 Exportar còpia</button>';
+    html += '<button onclick="$(\'#fileImport\').click()">📤 Importar còpia</button>';
+    html += '<input type="file" id="fileImport" accept=".json" style="display:none" onchange="importBackup(event)">';
+    html += '</div></div>';
+
     html += '<p class="mu">Les dades es desen localment al navegador.</p>';
     app.innerHTML = html;
     return;
