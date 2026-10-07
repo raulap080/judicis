@@ -31,14 +31,19 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .mu{color:var(--mu);font-size:13px}
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <main id="app"></main>
 <script>
+var CLIENT_ID = 'EL_TEU_CLIENT_ID_AQUI'; // Substitueix pel teu Client ID de Google
+var SCOPES = 'https://www.googleapis.com/auth/drive.file';
 var items = [];
 var view = 'list';
 var cur = null;
 var filter = 'todos';
+var tokenClient = null;
+var accessToken = localStorage.getItem('gdrive_token') || null;
 
 function $(s) { return document.querySelector(s); }
 
@@ -66,6 +71,108 @@ function lsWrite() {
 function init() {
   items = lsRead();
   render();
+  initGoogleAuth();
+}
+
+function initGoogleAuth() {
+  if (typeof google === 'undefined') return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: function(res) {
+      if (res.access_token) {
+        accessToken = res.access_token;
+        localStorage.setItem('gdrive_token', accessToken);
+        render();
+        syncDriveAuto();
+      }
+    }
+  });
+  if (accessToken) {
+    syncDriveAuto();
+  }
+}
+
+function connectDrive() {
+  if (tokenClient) {
+    tokenClient.requestAccessToken();
+  } else {
+    alert('S\'està carregant el servei de Google. Torna-ho a provar en un moment.');
+  }
+}
+
+function syncDriveAuto() {
+  if (!accessToken) return;
+  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27judicis_backup.json%27%20and%20trashed%3Dfalse', {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.files && data.files.length > 0) {
+      var fileId = data.files[0].id;
+      fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+        headers: { 'Authorization': 'Bearer ' + accessToken }
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(raw) {
+        var importedItems = Array.isArray(raw) ? raw : (raw.data || []);
+        var remoteDate = raw.updatedAt ? new Date(raw.updatedAt) : null;
+        var localDateStr = localStorage.getItem('juicios_updated');
+        var localDate = localDateStr ? new Date(localDateStr) : null;
+
+        if (remoteDate && localDate && remoteDate > localDate) {
+          if (confirm('S\'han trobat dades MÉS RECENTS a Google Drive (' + remoteDate.toLocaleString('ca-ES') + ').\n\nVols actualitzar les teves dades locals?')) {
+            items = importedItems;
+            lsWrite();
+            render();
+            alert('Sincronitzat amb èxit des de Google Drive!');
+          }
+        }
+      });
+    }
+  })
+  .catch(function(err) {
+    console.log('Sessió caducada o error de xarxa amb Drive');
+  });
+}
+
+function saveToDrive() {
+  if (!accessToken) {
+    alert('Connecta primer el teu compte de Google Drive.');
+    return;
+  }
+  var payload = {
+    updatedAt: new Date().toISOString(),
+    count: items.length,
+    data: items
+  };
+
+  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27judicis_backup.json%27%20and%20trashed%3Dfalse', {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    if (data.files && data.files.length > 0) {
+      var fileId = data.files[0].id;
+      fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media', {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: blob
+      }).then(function() { alert('Desat i sincronitzat a Google Drive amb èxit!'); });
+    } else {
+      var metadata = { name: 'judicis_backup.json', mimeType: 'application/json' };
+      var form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', blob);
+
+      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + accessToken },
+        body: form
+      }).then(function() { alert('Còpia creada a Google Drive amb èxit!'); });
+    }
+  });
 }
 
 function save(j) {
@@ -98,11 +205,7 @@ function calUrl(j) {
 }
 
 function exportBackup() {
-  var payload = {
-    updatedAt: new Date().toISOString(),
-    count: items.length,
-    data: items
-  };
+  var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items };
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
   var downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
@@ -120,20 +223,7 @@ function checkAndImportBackup(event) {
     try {
       var raw = JSON.parse(e.target.result);
       var importedItems = Array.isArray(raw) ? raw : (raw.data || []);
-      var importedDate = raw.updatedAt ? new Date(raw.updatedAt) : null;
-      var localDateStr = localStorage.getItem('juicios_updated');
-      var localDate = localDateStr ? new Date(localDateStr) : null;
-
-      var diffMsg = 'El fitxer té ' + importedItems.length + ' judicis (actuals: ' + items.length + ').';
-      if (importedDate && localDate) {
-        if (importedDate > localDate) {
-          diffMsg = 'S\'han detectat dades MÉS RECENTS al fitxer de Drive (' + importedDate.toLocaleString('ca-ES') + ').';
-        } else {
-          diffMsg = 'El fitxer sembla MÉS ANTIC que les teves dades locals (' + importedDate.toLocaleString('ca-ES') + ').';
-        }
-      }
-
-      if (confirm(diffMsg + '\n\nVols actualitzar les dades de l\'aplicació amb aquest fitxer?')) {
+      if (confirm('Vols restaurar les dades d\'aquest fitxer local?')) {
         items = importedItems;
         lsWrite();
         render();
@@ -184,15 +274,28 @@ function render() {
       html += '<p class="mu">Encara no hi ha judicis. Prem «+ Nou».</p>';
     }
     
-    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització amb Google Drive</h2>';
-    html += '<p class="mu" style="margin-top:0">Guarda el fitxer <code>judicis_backup.json</code> a la teva carpeta de Google Drive per tenir-lo disponible a tots els dispositius.</p>';
+    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
+    if (accessToken) {
+      html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive. L\'aplicació comprovarà si hi ha canvis en obrir-se.</p>';
+      html += '<div class="bar" style="margin-top:8px">';
+      html += '<button class="pri" onclick="saveToDrive()">☁️ Desar / Actualitzar a Drive</button>';
+      html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
+      html += '</div>';
+    } else {
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament entre mòbil i ordinador.</p>';
+      html += '<div class="bar" style="margin-top:8px">';
+      html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
+      html += '</div>';
+    }
+
+    html += '<h2>Còpia local manual (JSON)</h2>';
     html += '<div class="bar" style="margin-top:8px">';
-    html += '<button onclick="exportBackup()">📥 Desar / Exportar a Drive</button>';
-    html += '<button class="pri" onclick="$(\'#fileImport\').click()">🔄 Comprovar / Sincronitzar Drive</button>';
+    html += '<button onclick="exportBackup()">📥 Exportar fitxer</button>';
+    html += '<button onclick="$(\'#fileImport\').click()">📤 Importar fitxer</button>';
     html += '<input type="file" id="fileImport" accept=".json" style="display:none" onchange="checkAndImportBackup(event)">';
     html += '</div></div>';
 
-    html += '<p class="mu">Les dades es den localment al navegador.</p>';
+    html += '<p class="mu">Les dades es desen localment al navegador.</p>';
     app.innerHTML = html;
     return;
   }
@@ -267,8 +370,8 @@ function collect() {
 }
 
 function sync() { collect(); $('#cal').href = calUrl(cur); }
-function sv() { collect(); save(cur); back(); }
-function del() { if (confirm('Vols eliminar aquest judici?')) { remove(cur.id); back(); } }
+function sv() { collect(); save(cur); if (accessToken) saveToDrive(); back(); }
+function del() { if (confirm('Vols eliminar aquest judici?')) { remove(cur.id); if (accessToken) saveToDrive(); back(); } }
 
 function uploadFile(event) {
   collect();
