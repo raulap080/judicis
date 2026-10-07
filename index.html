@@ -13,7 +13,7 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 main{max-width:720px;margin:0 auto;padding:14px}
 h1{font-size:20px;margin:4px 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-button,.btn{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 13px;border-radius:9px;cursor:pointer;text-decoration:none;display:inline-block}
+button,.btn,.btn-label{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 13px;border-radius:9px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
 .pri{background:var(--ac);color:#fff;border-color:var(--ac)}
 .dan{color:var(--er)}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
@@ -36,7 +36,7 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 <body>
 <main id="app"></main>
 <script>
-var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com'; // Substitueix pel teu Client ID de Google
+var CLIENT_ID = 'EL_TEU_CLIENT_ID_AQUI'; // Recorda posar aquí el teu Client ID
 var SCOPES = 'https://www.googleapis.com/auth/drive.file';
 var items = [];
 var view = 'list';
@@ -291,8 +291,7 @@ function render() {
     html += '<h2>Còpia local manual (JSON)</h2>';
     html += '<div class="bar" style="margin-top:8px">';
     html += '<button onclick="exportBackup()">📥 Exportar fitxer</button>';
-    html += '<button onclick="$(\'#fileImport\').click()">📤 Importar fitxer</button>';
-    html += '<input type="file" id="fileImport" accept=".json" style="display:none" onchange="checkAndImportBackup(event)">';
+    html += '<label class="btn-label" style="margin:0;cursor:pointer">📤 Importar fitxer<input type="file" id="fileImport" accept=".json" style="position:absolute;opacity:0;width:1px;height:1px" onchange="checkAndImportBackup(event)"></label>';
     html += '</div></div>';
 
     html += '<p class="mu">Les dades es desen localment al navegador.</p>';
