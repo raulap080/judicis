@@ -30,111 +30,232 @@ textarea{min-height:80px;resize:vertical}
 h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd)}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .mu{color:var(--mu);font-size:13px}
-</style></head><body><main id="app"></main>
+</style>
+</head>
+<body>
+<main id="app"></main>
 <script>
-let items=[],view='list',cur=null,filter='todos';
-const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmt=d=>d?new Date(d+'T00:00').toLocaleDateString('ca-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'';
+var items = [];
+var view = 'list';
+var cur = null;
+var filter = 'todos';
 
-function lsRead(){try{return JSON.parse(localStorage.getItem('juicios')||'[]')}catch(e){return[]}}
-function lsWrite(){try{localStorage.setItem('juicios',JSON.stringify(items))}catch(e){}}
+function $(s) { return document.querySelector(s); }
 
-function init(){
-  items=lsRead();
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fmt(d) {
+  if (!d) return '';
+  return new Date(d + 'T00:00').toLocaleDateString('ca-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function lsRead() {
+  try { return JSON.parse(localStorage.getItem('juicios') || '[]'); } catch (e) { return []; }
+}
+
+function lsWrite() {
+  try { localStorage.setItem('juicios', JSON.stringify(items)); } catch (e) {}
+}
+
+function init() {
+  items = lsRead();
   render();
 }
 
-function save(j){
-  const i=items.findIndex(x=>x.id===j.id);
-  if(i<0)items.push({...j});else items[i]={...j};
+function save(j) {
+  var i = items.findIndex(function(x) { return x.id === j.id; });
+  if (i < 0) { items.push(Object.assign({}, j)); } else { items[i] = Object.assign({}, j); }
   lsWrite();
 }
 
-function remove(id){
-  items=items.filter(x=>x.id!==id);
+function remove(id) {
+  items = items.filter(function(x) { return x.id !== id; });
   lsWrite();
 }
 
-function status(j){
-  if(j.celebrado==='no'||j.celebrado==='suspendido')return['Suspès','er'];
-  if(j.celebrado!=='si')return['Pendent','wa'];
-  if(j.cobrado)return['Cobrat','ok'];
-  if(j.dad67)return['DAD 67 presentada','wa'];
-  return['Celebrat · falta DAD 67','wa'];
+function status(j) {
+  if (j.celebrado === 'no' || j.celebrado === 'suspendido') return ['Suspès', 'er'];
+  if (j.celebrado !== 'si') return ['Pendent', 'wa'];
+  if (j.cobrado) return ['Cobrat', 'ok'];
+  if (j.dad67) return ['DAD 67 presentada', 'wa'];
+  return ['Celebrat · falta DAD 67', 'wa'];
 }
 
-function calUrl(j){
-  if(!j.fecha)return'#';
-  const d=j.fecha.replace(/-/g,''),h=(j.hora||'09:00').split(':'),s=h[0]+h[1]+'00';
-  const e=String(Math.min(23,+h[0]+2)).padStart(2,'0')+h[1]+'00';
-  const det=['Expedient: '+(j.expedient||''),'Procediment: '+(j.proc||''),'Òrgan: '+(j.juzgado||''),'Sala: '+(j.sala||''),'Atestat: '+(j.atestado||''),'Qualitat: '+(j.qualitat||''),'Modalitat: '+(j.modalidadPrev||''),j.notas||''].join('\n');
-  return'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent((j.objecte||'Judici')+' '+(j.proc||j.expedient||''))+'&dates='+d+'T'+s+'/'+d+'T'+e+'&ctz=Europe/Madrid&location='+encodeURIComponent([j.juzgado,j.adreca,j.sala].filter(Boolean).join(', '))+'&details='+encodeURIComponent(det);
+function calUrl(j) {
+  if (!j.fecha) return '#';
+  var d = j.fecha.replace(/-/g, '');
+  var h = (j.hora || '09:00').split(':');
+  var s = h[0] + h[1] + '00';
+  var e = String(Math.min(23, Number(h[0]) + 2)).padStart(2, '0') + h[1] + '00';
+  var det = ['Expedient: ' + (j.expedient || ''), 'Procediment: ' + (j.proc || ''), 'Òrgan: ' + (j.juzgado || ''), 'Sala: ' + (j.sala || ''), 'Atestat: ' + (j.atestado || ''), 'Qualitat: ' + (j.qualitat || ''), 'Modalitat: ' + (j.modalidadPrev || ''), j.notas || ''].join('\n');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent((j.objecte || 'Judici') + ' ' + (j.proc || j.expedient || '')) + '&dates=' + d + 'T' + s + '/' + d + 'T' + e + '&ctz=Europe/Madrid&location=' + encodeURIComponent([j.juzgado, j.adreca, j.sala].filter(Boolean).join(', ')) + '&details=' + encodeURIComponent(det);
 }
 
-function render(){
-  const app=$('#app');
-  if(!app) return;
-  if(view==='list'){
-    const list=items.filter(j=>filter==='todos'||(filter==='pend'&&j.celebrado!=='si'&&j.celebrado!=='no'&&j.celebrado!=='suspendido')||(filter==='dad'&&j.celebrado==='si'&&!j.dad67)||(filter==='cobro'&&j.celebrado==='si'&&!j.cobrado)).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-    app.innerHTML=`<h1>Registre de judicis <button class="pri" onclick="edit()">+ Nou</button></h1>
-    <select onchange="filter=this.value;render()" style="margin-bottom:12px">
-      ${[['todos','Tots'],['pend','Pendents de celebrar'],['dad','Celebrats sense DAD 67'],['cobro','Pendents de cobrament']].map(o=>`<option value="${o[0]}" ${filter===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
-    ${list.length?list.map(j=>{const[t,c]=status(j);return`<div class="card item" onclick="edit('${j.id}')"><b>${esc(j.proc\vert{}\vert{}j.expedient\vert{}\vert{}'Sense núm. de procediment')} — ${esc(j.objecte||'')}</b>
-      <span class="mu">${fmt(j.fecha)}${esc(j.hora)} ${esc(j.sala)}<br>${esc(j.juzgado)}</span>
-      <div class="row"><span class="tag ${c}">${t}</span>${j.qualitat?`<span class="tag">${esc(j.qualitat)}</span>`:''}${j.justificante?'<span class="tag ok">Justificant</span>':''}${(j.files||[]).length?`<span class="tag">📎 ${j.files.length}</span>`:''}${j.celebrado==='si'?`<span class="tag">${j.modalidad==='video'?'Videoconferència':'Presencial'}</span>`:''}</div></div>`}).join(''):'<p class="mu">Encara no hi ha judicis. Prem «+ Nou».</p>'}
-    <p class="mu">Les dades es desen localment al navegador.</p>`;
+function render() {
+  var app = $('#app');
+  if (!app) return;
+  if (view === 'list') {
+    var list = items.filter(function(j) {
+      if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
+      if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
+      if (filter === 'cobro') return j.celebrado === 'si' && !j.cobrado;
+      return true;
+    }).sort(function(a, b) {
+      return (b.fecha || '').localeCompare(a.fecha || '');
+    });
+
+    var html = '<h1>Registre de judicis <button class="pri" onclick="edit()">+ Nou</button></h1>';
+    html += '<select onchange="filter=this.value;render()" style="margin-bottom:12px">';
+    html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
+    html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
+    html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
+    html += '<option value="cobro"' + (filter === 'cobro' ? ' selected' : '') + '>Pendents de cobrament</option>';
+    html += '</select>';
+
+    if (list.length) {
+      list.forEach(function(j) {
+        var st = status(j);
+        html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
+        html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
+        html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
+        html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
+        if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
+        if (j.justificante) html += '<span class="tag ok">Justificant</span>';
+        if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
+        if (j.celebrado === 'si') html += '<span class="tag">' + (j.modalidad === 'video' ? 'Videoconferència' : 'Presencial') + '</span>';
+        html += '</div></div>';
+      });
+    } else {
+      html += '<p class="mu">Encara no hi ha judicis. Prem «+ Nou».</p>';
+    }
+    html += '<p class="mu">Les dades es desen localment al navegador.</p>';
+    app.innerHTML = html;
     return;
   }
-  const j=cur,v=(k)=>esc(j[k]||''),ck=k=>j[k]?'checked':'';
-  app.innerHTML=`<h1>${items.some(x=>x.id===j.id)?'Judici':'Nou judici'} <button onclick="back()">Tancar</button></h1>
-  <div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>
-  ${items.some(x=>x.id===j.id)?'':`<label>Enganxar la citació (omple els camps automàticament)</label><textarea id="paste" placeholder="Enganxa aquí el text de la citació…"></textarea><div class="bar" style="margin-top:6px"><button onclick="parsePaste()">Omplir des del text</button></div>`}
-  <label>Expedient</label><input id="expedient" value="${v('expedient')}">
-  <div class="g2"><div><label>Procediment</label><input id="proc" value="${v('proc')}"></div><div><label>Atestat</label><input id="atestado" value="${v('atestado')}"></div></div>
-  <label>Òrgan jurisdiccional</label><input id="juzgado" value="${v('juzgado')}">
-  <label>Adreça</label><input id="adreca" value="${v('adreca')}">
-  <div class="g2"><div><label>Telèfon</label><input id="telefon" type="tel" value="${v('telefon')}"></div><div><label>Fax</label><input id="fax" type="tel" value="${v('fax')}"></div></div>
-  <div class="g2"><div><label>Qualitat de la compareixença</label><input id="qualitat" value="${v('qualitat')}"></div><div><label>Sala</label><input id="sala" value="${v('sala')}"></div></div>
-  <label>Objecte de la compareixença</label><input id="objecte" value="${v('objecte')}">
-  <div class="g2"><div><label>Data</label><input type="date" id="fecha" value="${v('fecha')}"></div><div><label>Hora</label><input type="time" id="hora" value="${v('hora')}"></div></div>
-  <label>Modalitat prevista</label><select id="modalidadPrev"><option value="presencial" ${j.modalidadPrev!=='video'?'selected':''}>Presencial</option><option value="video" ${j.modalidadPrev==='video'?'selected':''}>Videoconferència</option></select>
-  <label>Notes</label><textarea id="notas">${v('notas')}</textarea>
-  <div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="${calUrl(j)}">📅 Afegir a Google Calendar</a></div>
-  <p class="mu">S'obre Google Calendar amb l'esdeveniment a punt per confirmar (2 h de durada per defecte).</p></div>
-  <div class="card"><h2 style="border:0;margin:0;padding:0">Seguiment</h2>
-  <label>S'ha celebrat?</label><select id="celebrado">${[['','Pendent'],['si','Sí'],['no','No'],['suspendido','Suspès']].map(o=>`<option value="${o[0]}" ${(j.celebrado\vert{}\vert{}'')===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
-  <label>Modalitat real</label><select id="modalidad"><option value="presencial" ${j.modalidad!=='video'?'selected':''}>Presencial</option><option value="video" ${j.modalidad==='video'?'selected':''}>Videoconferència</option></select>
-  <div class="g2"><div><label>Hora d'arribada</label><input type="time" id="llegada" value="${v('llegada')}"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="${v('salida')}"></div></div>
-  <label>Minuta policial</label><textarea id="minuta">${v('minuta')}</textarea>
-  <label>Persones denunciades</label><textarea id="denunciados">${v('denunciados')}</textarea>
-  <label>Testimonis / agents compareixents</label><textarea id="testigos">${v('testigos')}</textarea>
-  <h2>Cobrament</h2>
-  <label class="chk"><input type="checkbox" id="justificante" ${ck('justificante')}> Tinc el justificant</label>
-  <label class="chk"><input type="checkbox" id="dad67" ${ck('dad67')}> Sol·licitud DAD 67 presentada</label>
-  <div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="${v('dad67Fecha')}"></div>
-  <label class="chk"><input type="checkbox" id="cobrado" ${ck('cobrado')}> Cobrat</label>
-  <div><label>Data de cobrament</label><input type="date" id="cobradoFecha" value="${v('cobradoFecha')}"></div></div>
-  <div class="card"><h2 style="border:0;margin:0;padding:0">Fitxers de l'expedient</h2>${(j.files||[]).map((f,i)=>`<div class="row" style="align-items:center;justify-content:space-between"><a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name)}</a><button class="dan" onclick="rmFile(${i})">Treure</button></div>`).join('')||'<p class="mu">Sense fitxers.</p>'}<label style="margin-top:10px">Afegir un enllaç (Drive, Dropbox, OneDrive…)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>
-  <div class="bar"><button class="pri" onclick="sv()">Desar</button>${items.some(x=>x.id===j.id)?'<button class="dan" onclick="del()">Eliminar</button>':''}</div>`;
+
+  var j = cur;
+  var v = function(k) { return esc(j[k] || ''); };
+  var ck = function(k) { return j[k] ? 'checked' : ''; };
+  var isNew = !items.some(function(x) { return x.id === j.id; });
+
+  var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="back()">Tancar</button></h1>';
+  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>';
+  if (isNew) {
+    fHtml += '<label>Enganxar la citació (omple els camps automàticament)</label><textarea id="paste" placeholder="Enganxa aquí el text de la citació…"></textarea><div class="bar" style="margin-top:6px"><button onclick="parsePaste()">Omplir des del text</button></div>';
+  }
+  fHtml += '<label>Expedient</label><input id="expedient" value="' + v('expedient') + '">';
+  fHtml += '<div class="g2"><div><label>Procediment</label><input id="proc" value="' + v('proc') + '"></div><div><label>Atestat</label><input id="atestado" value="' + v('atestado') + '"></div></div>';
+  fHtml += '<label>Òrgan jurisdiccional</label><input id="juzgado" value="' + v('juzgado') + '">';
+  fHtml += '<label>Adreça</label><input id="adreca" value="' + v('adreca') + '">';
+  fHtml += '<div class="g2"><div><label>Telèfon</label><input id="telefon" type="tel" value="' + v('telefon') + '"></div><div><label>Fax</label><input id="fax" type="tel" value="' + v('fax') + '"></div></div>';
+  fHtml += '<div class="g2"><div><label>Qualitat de la compareixença</label><input id="qualitat" value="' + v('qualitat') + '"></div><div><label>Sala</label><input id="sala" value="' + v('sala') + '"></div></div>';
+  fHtml += '<label>Objecte de la compareixença</label><input id="objecte" value="' + v('objecte') + '">';
+  fHtml += '<div class="g2"><div><label>Data</label><input type="date" id="fecha" value="' + v('fecha') + '"></div><div><label>Hora</label><input type="time" id="hora" value="' + v('hora') + '"></div></div>';
+  fHtml += '<label>Modalitat prevista</label><select id="modalidadPrev"><option value="presencial"' + (j.modalidadPrev !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidadPrev === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
+  fHtml += '<label>Notes</label><textarea id="notas">' + v('notas') + '</textarea>';
+  fHtml += '<div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="' + calUrl(j) + '">📅 Afegir a Google Calendar</a></div>';
+  fHtml += '<p class="mu">S\'obre Google Calendar amb l\'esdeveniment a punt per confirmar (2 h de durada per defecte).</p></div>';
+  
+  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Seguiment</h2>';
+  fHtml += '<label>S\'ha celebrat?</label><select id="celebrado">';
+  [['', 'Pendent'], ['si', 'Sí'], ['no', 'No'], ['suspendido', 'Suspès']].forEach(function(o) {
+    fHtml += '<option value="' + o[0] + '"' + ((j.celebrado || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+  });
+  fHtml += '</select>';
+  fHtml += '<label>Modalitat real</label><select id="modalidad"><option value="presencial"' + (j.modalidad !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidad === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
+  fHtml += '<div class="g2"><div><label>Hora d\'arribada</label><input type="time" id="llegada" value="' + v('llegada') + '"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '"></div></div>';
+  fHtml += '<label>Minuta policial</label><textarea id="minuta">' + v('minuta') + '</textarea>';
+  fHtml += '<label>Persones denunciades</label><textarea id="denunciados">' + v('denunciados') + '</textarea>';
+  fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos">' + v('testigos') + '</textarea>';
+  fHtml += '<h2>Cobrament</h2>';
+  fHtml += '<label class="chk"><input type="checkbox" id="justificante" ' + ck('justificante') + '> Tinc el justificant</label>';
+  fHtml += '<label class="chk"><input type="checkbox" id="dad67" ' + ck('dad67') + '> Sol·licitud DAD 67 presentada</label>';
+  fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '"></div>';
+  fHtml += '<label class="chk"><input type="checkbox" id="cobrado" ' + ck('cobrado') + '> Cobrat</label>';
+  fHtml += '<div><label>Data de cobrament</label><input type="date" id="cobradoFecha" value="' + v('cobradoFecha') + '"></div></div>';
+  
+  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Fitxers de l\'expedient</h2>';
+  if (j.files && j.files.length) {
+    j.files.forEach(function(f, i) {
+      fHtml += '<div class="row" style="align-items:center;justify-content:space-between"><a href="' + esc(f.url) + '" target="_blank" rel="noopener">📎 ' + esc(f.name) + '</a><button class="dan" onclick="rmFile(' + i + ')">Treure</button></div>';
+    });
+  } else {
+    fHtml += '<p class="mu">Sense fitxers.</p>';
+  }
+  fHtml += '<label style="margin-top:10px">Afegir un enllaç (Drive, Dropbox, OneDrive…)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>';
+  fHtml += '<div class="bar"><button class="pri" onclick="sv()">Desar</button>' + (isNew ? '' : '<button class="dan" onclick="del()">Eliminar</button>') + '</div>';
+
+  app.innerHTML = fHtml;
 }
 
-const F=['expedient','proc','atestado','juzgado','adreca','fax','telefon','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'],C=['justificante','dad67','cobrado'];
-function collect(){F.forEach(k=>cur[k]=$('#'+k).value);C.forEach(k=>cur[k]=$('#'+k).checked)}
-function sync(){collect();$('#cal').href=calUrl(cur)}
-function sv(){collect();save(cur);back()}
-function del(){if(confirm('Vols eliminar aquest judici?')){remove(cur.id);back()}}
-function addLink(){collect();const u=$('#lurl').value.trim();if(!/^https?:\/\//i.test(u)){alert('Escriu un enllaç que comenci per https://');return}
-  cur.files=cur.files||[];cur.files.push({name:$('#lname').value.trim()||u,url:u,link:true});save(cur);render()}
-function rmFile(i){collect();cur.files.splice(i,1);save(cur);render()}
-function parsePaste(){collect();const t=$('#paste').value,g=r=>{const m=t.match(r);return m?m[1].trim():''},st=(k,v)=>{if(v)cur[k]=v};
-  st('expedient',g(/Expedient:?\s*([^\n]+)/i));st('juzgado',g(/[ÒO]rgan jurisdiccional:?\s*([^\n]+)/i));st('adreca',g(/Adre[çc]a:?\s*([^\n]+)/i));st('fax',g(/Fax:?\s*([^\n]+)/i));st('telefon',g(/Tel[èe]fon:?\s*([^\n]+)/i));
-  const d=t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})[ \t]*([^\n]*)/);
-  if(d){cur.fecha=d[3]+'-'+d[2].padStart(2,'0')+'-'+d[1].padStart(2,'0');cur.hora=d[4].padStart(2,'0')+':'+d[5];cur.sala=d[6].trim()}
-  st('atestado',g(/Atestat:?\s*([^\n]+)/i));st('proc',g(/Procediment:?\s*([^\n]+)/i));st('qualitat',g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));st('objecte',g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
-  render()}
-function edit(id){cur=id?{...items.find(x=>x.id===id)}:{id:'j'+Date.now().toString(36)};view='form';render();scrollTo(0,0)}
-function back(){view='list';cur=null;render()}
+var F = ['expedient','proc','atestado','juzgado','adreca','fax','telefon','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'];
+var C = ['justificante','dad67','cobrado'];
+
+function collect() {
+  F.forEach(function(k) { if ($('#'+k)) cur[k] = $('#'+k).value; });
+  C.forEach(function(k) { if ($('#'+k)) cur[k] = $('#'+k).checked; });
+}
+
+function sync() { collect(); $('#cal').href = calUrl(cur); }
+function sv() { collect(); save(cur); back(); }
+function del() { if (confirm('Vols eliminar aquest judici?')) { remove(cur.id); back(); } }
+
+function addLink() {
+  collect();
+  var u = $('#lurl').value.trim();
+  if (!/^https?:\/\//i.test(u)) { alert('Escriu un enllaç que comenci per https://'); return; }
+  cur.files = cur.files || [];
+  cur.files.push({ name: $('#lname').value.trim() || u, url: u, link: true });
+  save(cur);
+  render();
+}
+
+function rmFile(i) { collect(); cur.files.splice(i, 1); save(cur); render(); }
+
+function parsePaste() {
+  collect();
+  var t = $('#paste').value;
+  var g = function(r) { var m = t.match(r); return m ? m[1].trim() : ''; };
+  var st = function(k, v) { if (v) cur[k] = v; };
+
+  st('expedient', g(/Expedient:?\s*([^\n]+)/i));
+  st('juzgado', g(/[ÒO]rgan jurisdiccional:?\s*([^\n]+)/i));
+  st('adreca', g(/Adre[çc]a:?\s*([^\n]+)/i));
+  st('fax', g(/Fax:?\s*([^\n]+)/i));
+  st('telefon', g(/Tel[èe]fon:?\s*([^\n]+)/i));
+  
+  var d = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})[ \t]*([^\n]*)/);
+  if (d) {
+    cur.fecha = d[3] + '-' + d[2].padStart(2, '0') + '-' + d[1].padStart(2, '0');
+    cur.hora = d[4].padStart(2, '0') + ':' + d[5];
+    cur.sala = d[6].trim();
+  }
+  
+  st('atestado', g(/Atestat:?\s*([^\n]+)/i));
+  st('proc', g(/Procediment:?\s*([^\n]+)/i));
+  st('qualitat', g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
+  st('objecte', g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
+  render();
+}
+
+function edit(id) {
+  if (id) {
+    var found = items.find(function(x) { return x.id === id; });
+    cur = Object.assign({}, found);
+  } else {
+    cur = { id: 'j' + Date.now().toString(36) };
+  }
+  view = 'form';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function back() { view = 'list'; cur = null; render(); }
 
 window.addEventListener('DOMContentLoaded', init);
-</script></body></html>
+</script>
+</body>
+</html>
