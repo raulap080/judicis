@@ -16,6 +16,7 @@ h1{font-size:20px;margin:4px 0 12px;display:flex;justify-content:space-between;a
 .brand-icon{width:36px;height:36px;border-radius:99px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .brand-icon svg{width:22px;height:22px;display:block}
 button,.btn,.btn-label{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 13px;border-radius:99px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+button:disabled{opacity:0.5;cursor:not-allowed}
 .pri{background:var(--ac);color:#fff;border-color:var(--ac)}
 .dan{color:var(--er)}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
@@ -32,6 +33,10 @@ textarea{min-height:80px;resize:vertical}
 h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd)}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .mu{color:var(--mu);font-size:13px}
+
+/* Paginació */
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0}
+.pagination-info{font-size:13px;color:var(--mu)}
 
 /* Modal Google Drive */
 .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:14px}
@@ -85,6 +90,8 @@ var view = 'list';
 var cur = null;
 var filter = 'todos';
 var sortBy = 'fecha_desc';
+var currentPage = 1;
+var pageSize = 10;
 var tokenClient = null;
 var accessToken = localStorage.getItem('gdrive_token') || null;
 
@@ -281,6 +288,11 @@ function checkAndImportBackup(event) {
   reader.readAsText(file);
 }
 
+function changePage(delta) {
+  currentPage += delta;
+  render();
+}
+
 function render() {
   var app = $('#app');
   if (!app) return;
@@ -302,11 +314,20 @@ function render() {
       return 0;
     });
 
+    var totalItems = list.length;
+    var totalPages = pageSize === 0 ? 1 : Math.ceil(totalItems / pageSize) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    var startIdx = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
+    var endIdx = pageSize === 0 ? totalItems : Math.min(startIdx + pageSize, totalItems);
+    var pagedList = list.slice(startIdx, endIdx);
+
     var html = '<h1><div class="brand">' + logoSvg + '<span>Judicis</span></div><button class="pri" onclick="edit()">+ Nou</button></h1>';
     
-    html += '<div class="g2" style="margin-bottom:12px">';
+    html += '<div class="g2" style="margin-bottom:8px">';
     html += '<div><label style="margin:0 0 2px 2px">Filtrar</label>';
-    html += '<select onchange="filter=this.value;render()">';
+    html += '<select onchange="filter=this.value;currentPage=1;render()">';
     html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
     html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
     html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
@@ -323,8 +344,16 @@ function render() {
     html += '</select></div>';
     html += '</div>';
 
-    if (list.length) {
-      list.forEach(function(j) {
+    html += '<div style="margin-bottom:12px"><label style="margin:0 0 2px 2px">Mostrar</label>';
+    html += '<select onchange="pageSize=Number(this.value);currentPage=1;render()">';
+    html += '<option value="10"' + (pageSize === 10 ? ' selected' : '') + '>10 per pàgina</option>';
+    html += '<option value="20"' + (pageSize === 20 ? ' selected' : '') + '>20 per pàgina</option>';
+    html += '<option value="50"' + (pageSize === 50 ? ' selected' : '') + '>50 per pàgina</option>';
+    html += '<option value="0"' + (pageSize === 0 ? ' selected' : '') + '>Tots</option>';
+    html += '</select></div>';
+
+    if (pagedList.length) {
+      pagedList.forEach(function(j) {
         var st = status(j);
         html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
         html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
@@ -336,8 +365,16 @@ function render() {
         if (j.celebrado === 'si') html += '<span class="tag">' + (j.modalidad === 'video' ? 'Videoconferència' : 'Presencial') + '</span>';
         html += '</div></div>';
       });
+
+      if (pageSize > 0 && totalPages > 1) {
+        html += '<div class="pagination">';
+        html += '<button onclick="changePage(-1)" ' + (currentPage === 1 ? 'disabled' : '') + '>◀ Anterior</button>';
+        html += '<span class="pagination-info">Pàgina ' + currentPage + ' de ' + totalPages + ' (' + totalItems + ' registre' + (totalItems > 1 ? 's' : '') + ')</span>';
+        html += '<button onclick="changePage(1)" ' + (currentPage === totalPages ? 'disabled' : '') + '>Següent ▶</button>';
+        html += '</div>';
+      }
     } else {
-      html += '<p class="mu">Encara no hi ha judicis. Prem «+ Nou».</p>';
+      html += '<p class="mu">Encara no hi ha judicis en aquesta secció. Prem «+ Nou».</p>';
     }
     
     html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
