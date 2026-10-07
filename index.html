@@ -15,7 +15,7 @@ h1{font-size:20px;margin:4px 0 12px;display:flex;justify-content:space-between;a
 .brand{display:flex;align-items:center;gap:10px}
 .brand-icon{width:36px;height:36px;border-radius:99px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .brand-icon svg{width:22px;height:22px;display:block}
-button,.btn,.btn-label{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 13px;border-radius:9px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+button,.btn,.btn-label{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 13px;border-radius:99px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
 .pri{background:var(--ac);color:#fff;border-color:var(--ac)}
 .dan{color:var(--er)}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
@@ -32,12 +32,53 @@ textarea{min-height:80px;resize:vertical}
 h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd)}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .mu{color:var(--mu);font-size:13px}
+
+/* Modal Google Drive */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:14px}
+.modal-card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:20px;max-width:480px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,0.2);position:relative}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;color:var(--mu);cursor:pointer;padding:4px}
+.badge-test{display:inline-block;background:var(--wa);color:#fff;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:99px;margin-bottom:8px}
+.info-box{background:var(--bg);border-left:4px solid var(--ac);padding:12px;border-radius:6px;margin:14px 0}
+.btn-sol{display:inline-block;background:var(--ac);color:#fff;text-decoration:none;padding:10px 16px;border-radius:99px;font-weight:500;margin-top:8px;text-align:center}
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <main id="app"></main>
+
+<!-- Modal d'informació Google Drive -->
+<div id="modalDrive" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <button class="modal-close" onclick="tancarModalDrive()">&times;</button>
+    <span class="badge-test">Fase de proves (Testing)</span>
+    <h3 style="margin:4px 0 10px;font-size:18px">☁️ Còpies de seguretat a Google Drive</h3>
+    <p class="mu" style="font-size:14px;line-height:1.5">
+      La sincronització automàtica amb Google Drive es troba en fase de proves reduïda. 
+      Per poder utilitzar aquesta funció, cal que el teu compte de Google estigui donat d'alta com a usuari autoritzat.
+    </p>
+
+    <div class="info-box">
+      <b style="font-size:14px;display:block">Vols activar la sincronització?</b>
+      <p class="mu" style="margin:4px 0 8px">Envia una sol·licitud indicant el teu correu de Google i t'afegirem com a usuari de prova.</p>
+      <a href="mailto:raulap@gmail.com?subject=Sol%C2%B7licitud%20acc%C3%A9s%20Google%20Drive%20-%20Registre%20de%20Judicis&body=Hola,%20m'agradaria%20sol%C2%B7licitar%20acc%C3%A9s%20per%20a%20les%20c%C3%B2pies%20de%20seguretat%20de%20Google%20Drive.%20El%20meu%20correu%20de%20Google%20%C3%A9s:%20" class="btn-sol">
+        ✉️ Sol·licitar accés a raulap@gmail.com
+      </a>
+    </div>
+
+    <p class="mu" style="font-size:12px;margin:12px 0 16px">
+      * Un cop afegit el teu correu (en 24-48 hores), podràs connectar el teu compte. Si en iniciar sessió veus un avís de Google, prem a <i>«Avançat»</i> i després a <i>«Anar a Registre de Judicis»</i>.
+    </p>
+
+    <div style="text-align:right">
+      <button onclick="tancarModalDrive()">Tancar</button>
+    </div>
+  </div>
+</div>
+
 <script>
+// Evita el fallo de ejecuciones onload heredadas
+function initGoogleAuth() {}
+
 var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com';
 var SCOPES = 'https://www.googleapis.com/auth/drive.file';
 var items = [];
@@ -47,7 +88,7 @@ var filter = 'todos';
 var tokenClient = null;
 var accessToken = localStorage.getItem('gdrive_token') || null;
 
-function $(s) { return document.querySelector(s); }
+function \$(s) { return document.querySelector(s); }
 
 function esc(s) {
   if (s === null || s === undefined) return '';
@@ -73,6 +114,14 @@ function lsWrite() {
 function init() {
   items = lsRead();
   render();
+}
+
+function obrirModalDrive() {
+  \$('#modalDrive').style.display = 'flex';
+}
+
+function tancarModalDrive() {
+  \$('#modalDrive').style.display = 'none';
 }
 
 function connectDrive() {
@@ -233,7 +282,7 @@ function checkAndImportBackup(event) {
 }
 
 function render() {
-  var app = $('#app');
+  var app = \$('#app');
   if (!app) return;
   
   var logoSvg = '<div class="brand-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="380" cy="130" r="30" fill="#58c58a"/></svg></div>';
@@ -251,194 +300,4 @@ function render() {
     var html = '<h1><div class="brand">' + logoSvg + '<span>Judicis</span></div><button class="pri" onclick="edit()">+ Nou</button></h1>';
     html += '<select onchange="filter=this.value;render()" style="margin-bottom:12px">';
     html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
-    html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
-    html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
-    html += '<option value="cobro"' + (filter === 'cobro' ? ' selected' : '') + '>Pendents de cobrament</option>';
-    html += '</select>';
-
-    if (list.length) {
-      list.forEach(function(j) {
-        var st = status(j);
-        html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
-        html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
-        html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
-        html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
-        if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
-        if (j.justificante) html += '<span class="tag ok">Justificant</span>';
-        if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
-        if (j.celebrado === 'si') html += '<span class="tag">' + (j.modalidad === 'video' ? 'Videoconferència' : 'Presencial') + '</span>';
-        html += '</div></div>';
-      });
-    } else {
-      html += '<p class="mu">Encara no hi ha judicis. Prem «+ Nou».</p>';
-    }
-    
-    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
-    if (accessToken) {
-      html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive.</p>';
-      html += '<div class="bar" style="margin-top:8px">';
-      html += '<button class="pri" onclick="saveToDrive()">☁️ Desar / Actualitzar a Drive</button>';
-      html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
-      html += '</div>';
-    } else {
-      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
-      html += '<div class="bar" style="margin-top:8px">';
-      html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
-      html += '</div>';
-    }
-
-    html += '<h2>Còpia local manual (JSON)</h2>';
-    html += '<div class="bar" style="margin-top:8px">';
-    html += '<button onclick="exportBackup()">📥 Exportar fitxer</button>';
-    html += '<label class="btn-label" style="margin:0;cursor:pointer">📤 Importar fitxer<input type="file" id="fileImport" accept=".json" style="position:absolute;opacity:0;width:1px;height:1px" onchange="checkAndImportBackup(event)"></label>';
-    html += '</div></div>';
-
-    html += '<p class="mu">Les dades es desen localment al navegador.</p>';
-    app.innerHTML = html;
-    return;
-  }
-
-  var j = cur;
-  var v = function(k) { return esc(j[k] || ''); };
-  var ck = function(k) { return j[k] ? 'checked' : ''; };
-  var isNew = !items.some(function(x) { return x.id === j.id; });
-
-  var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="back()">Tancar</button></h1>';
-  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>';
-  if (isNew) {
-    fHtml += '<label>Enganxar la citació (omple els camps automàticament)</label><textarea id="paste" placeholder="Enganxa aquí el text de la citació…"></textarea><div class="bar" style="margin-top:6px"><button onclick="parsePaste()">Omplir des del text</button></div>';
-  }
-  fHtml += '<label>Expedient</label><input id="expedient" value="' + v('expedient') + '">';
-  fHtml += '<div class="g2"><div><label>Procediment</label><input id="proc" value="' + v('proc') + '"></div><div><label>Atestat</label><input id="atestado" value="' + v('atestado') + '"></div></div>';
-  fHtml += '<label>Òrgan jurisdiccional</label><input id="juzgado" value="' + v('juzgado') + '">';
-  fHtml += '<label>Adreça</label><input id="adreca" value="' + v('adreca') + '">';
-  fHtml += '<div class="g2"><div><label>Telèfon</label><input id="telefon" type="tel" value="' + v('telefon') + '"></div><div><label>Fax</label><input id="fax" type="tel" value="' + v('fax') + '"></div></div>';
-  fHtml += '<div class="g2"><div><label>Qualitat de la compareixença</label><input id="qualitat" value="' + v('qualitat') + '"></div><div><label>Sala</label><input id="sala" value="' + v('sala') + '"></div></div>';
-  fHtml += '<label>Objecte de la compareixença</label><input id="objecte" value="' + v('objecte') + '">';
-  fHtml += '<div class="g2"><div><label>Data</label><input type="date" id="fecha" value="' + v('fecha') + '"></div><div><label>Hora</label><input type="time" id="hora" value="' + v('hora') + '"></div></div>';
-  fHtml += '<label>Modalitat prevista</label><select id="modalidadPrev"><option value="presencial"' + (j.modalidadPrev !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidadPrev === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
-  fHtml += '<label>Notes</label><textarea id="notas">' + v('notas') + '</textarea>';
-  fHtml += '<div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="' + calUrl(j) + '">📅 Afegir a Google Calendar</a></div>';
-  fHtml += '<p class="mu">S\'obre Google Calendar amb l\'esdeveniment a punt per confirmar.</p></div>';
-  
-  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Seguiment</h2>';
-  fHtml += '<label>S\'ha celebrat?</label><select id="celebrado">';
-  [['', 'Pendent'], ['si', 'Sí'], ['no', 'No'], ['suspendido', 'Suspès']].forEach(function(o) {
-    fHtml += '<option value="' + o[0] + '"' + ((j.celebrado || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
-  });
-  fHtml += '</select>';
-  fHtml += '<label>Modalitat real</label><select id="modalidad"><option value="presencial"' + (j.modalidad !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidad === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
-  fHtml += '<div class="g2"><div><label>Hora d\'arribada</label><input type="time" id="llegada" value="' + v('llegada') + '"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '"></div></div>';
-  fHtml += '<label>Minuta policial</label><textarea id="minuta">' + v('minuta') + '</textarea>';
-  fHtml += '<label>Persones denunciades</label><textarea id="denunciados">' + v('denunciados') + '</textarea>';
-  fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos">' + v('testigos') + '</textarea>';
-  fHtml += '<h2>Cobrament</h2>';
-  fHtml += '<label class="chk"><input type="checkbox" id="justificante" ' + ck('justificante') + '> Tinc el justificant</label>';
-  fHtml += '<label class="chk"><input type="checkbox" id="dad67" ' + ck('dad67') + '> Sol·licitud DAD 67 presentada</label>';
-  fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '"></div>';
-  fHtml += '<label class="chk"><input type="checkbox" id="cobrado" ' + ck('cobrado') + '> Cobrat</label>';
-  fHtml += '<div><label>Data de cobrament</label><input type="date" id="cobradoFecha" value="' + v('cobradoFecha') + '"></div></div>';
-  
-  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Fitxers de l\'expedient</h2>';
-  if (j.files && j.files.length) {
-    j.files.forEach(function(f, i) {
-      var dAttr = f.link ? 'target="_blank" rel="noopener"' : 'download="' + esc(f.name) + '"';
-      fHtml += '<div class="row" style="align-items:center;justify-content:space-between"><a href="' + esc(f.url) + '" ' + dAttr + '>📎 ' + esc(f.name) + '</a><button class="dan" onclick="rmFile(' + i + ')">Treure</button></div>';
-    });
-  } else {
-    fHtml += '<p class="mu">Sense fitxers.</p>';
-  }
-  
-  fHtml += '<label style="margin-top:10px">Pujar fitxer local (PDF, imatge...)</label>';
-  fHtml += '<input type="file" id="fileDirect" onchange="uploadFile(event)">';
-  
-  fHtml += '<label style="margin-top:10px">O afegir un enllaç extern (Drive, Dropbox...)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>';
-  
-  fHtml += '<div class="bar"><button class="pri" onclick="sv()">Desar</button>' + (isNew ? '' : '<button class="dan" onclick="del()">Eliminar</button>') + '</div>';
-
-  app.innerHTML = fHtml;
-}
-
-var F = ['expedient','proc','atestado','juzgado','adreca','fax','telefon','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'];
-var C = ['justificante','dad67','cobrado'];
-
-function collect() {
-  F.forEach(function(k) { if ($('#'+k)) cur[k] = $('#'+k).value; });
-  C.forEach(function(k) { if ($('#'+k)) cur[k] = $('#'+k).checked; });
-}
-
-function sync() { collect(); $('#cal').href = calUrl(cur); }
-function sv() { collect(); save(cur); if (accessToken) saveToDrive(); back(); }
-function del() { if (confirm('Vols eliminar aquest judici?')) { remove(cur.id); if (accessToken) saveToDrive(); back(); } }
-
-function uploadFile(event) {
-  collect();
-  var file = event.target.files[0];
-  if (!file) return;
-  
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    cur.files = cur.files || [];
-    cur.files.push({ name: file.name, url: e.target.result, link: false });
-    save(cur);
-    render();
-  };
-  reader.readAsDataURL(file);
-}
-
-function addLink() {
-  collect();
-  var u = $('#lurl').value.trim();
-  if (!/^https?:\/\//i.test(u)) { alert('Escriu un enllaç que comenci per https://'); return; }
-  cur.files = cur.files || [];
-  cur.files.push({ name: $('#lname').value.trim() || u, url: u, link: true });
-  save(cur);
-  render();
-}
-
-function rmFile(i) { collect(); cur.files.splice(i, 1); save(cur); render(); }
-
-function parsePaste() {
-  collect();
-  var t = $('#paste').value;
-  var g = function(r) { var m = t.match(r); return m ? m[1].trim() : ''; };
-  var st = function(k, v) { if (v) cur[k] = v; };
-
-  st('expedient', g(/Expedient:?\s*([^\n]+)/i));
-  st('juzgado', g(/[ÒO]rgan jurisdiccional:?\s*([^\n]+)/i));
-  st('adreca', g(/Adre[çc]a:?\s*([^\n]+)/i));
-  st('fax', g(/Fax:?\s*([^\n]+)/i));
-  st('telefon', g(/Tel[èe]fon:?\s*([^\n]+)/i));
-  
-  var d = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})[ \t]*([^\n]*)/);
-  if (d) {
-    cur.fecha = d[3] + '-' + d[2].padStart(2, '0') + '-' + d[1].padStart(2, '0');
-    cur.hora = d[4].padStart(2, '0') + ':' + d[5];
-    cur.sala = d[6].trim();
-  }
-  
-  st('atestado', g(/Atestat:?\s*([^\n]+)/i));
-  st('proc', g(/Procediment:?\s*([^\n]+)/i));
-  st('qualitat', g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
-  st('objecte', g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
-  render();
-}
-
-function edit(id) {
-  if (id) {
-    var found = items.find(function(x) { return x.id === id; });
-    cur = Object.assign({}, found);
-  } else {
-    cur = { id: 'j' + Date.now().toString(36) };
-  }
-  view = 'form';
-  render();
-  window.scrollTo(0, 0);
-}
-
-function back() { view = 'list'; cur = null; render(); }
-
-document.addEventListener('DOMContentLoaded', init);
-</script>
-</body>
-</html>
+    html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') +
