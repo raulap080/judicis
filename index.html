@@ -33,7 +33,7 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 </style></head><body><main id="app"></main>
 <script>
 let items=[],view='list',cur=null,filter='todos';
-const $=s=>document.querySelector(s),app=$('#app');
+const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=d=>d?new Date(d+'T00:00').toLocaleDateString('ca-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'';
 
@@ -73,6 +73,8 @@ function calUrl(j){
 }
 
 function render(){
+  const app=$('#app');
+  if(!app) return;
   if(view==='list'){
     const list=items.filter(j=>filter==='todos'||(filter==='pend'&&j.celebrado!=='si'&&j.celebrado!=='no'&&j.celebrado!=='suspendido')||(filter==='dad'&&j.celebrado==='si'&&!j.dad67)||(filter==='cobro'&&j.celebrado==='si'&&!j.cobrado)).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
     app.innerHTML=`<h1>Registre de judicis <button class="pri" onclick="edit()">+ Nou</button></h1>
@@ -81,7 +83,7 @@ function render(){
     ${list.length?list.map(j=>{const[t,c]=status(j);return`<div class="card item" onclick="edit('${j.id}')"><b>${esc(j.proc\vert{}\vert{}j.expedient\vert{}\vert{}'Sense núm. de procediment')} — ${esc(j.objecte||'')}</b>
       <span class="mu">${fmt(j.fecha)}${esc(j.hora)} ${esc(j.sala)}<br>${esc(j.juzgado)}</span>
       <div class="row"><span class="tag ${c}">${t}</span>${j.qualitat?`<span class="tag">${esc(j.qualitat)}</span>`:''}${j.justificante?'<span class="tag ok">Justificant</span>':''}${(j.files||[]).length?`<span class="tag">📎 ${j.files.length}</span>`:''}${j.celebrado==='si'?`<span class="tag">${j.modalidad==='video'?'Videoconferència':'Presencial'}</span>`:''}</div></div>`}).join(''):'<p class="mu">Encara no hi ha judicis. Prem «+ Nou».</p>'}
-    <p class="mu">Les dades es desen automàticament en aquest navegador.</p>`;
+    <p class="mu">Les dades es desen localment al navegador.</p>`;
     return;
   }
   const j=cur,v=(k)=>esc(j[k]||''),ck=k=>j[k]?'checked':'';
@@ -113,50 +115,26 @@ function render(){
   <div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="${v('dad67Fecha')}"></div>
   <label class="chk"><input type="checkbox" id="cobrado" ${ck('cobrado')}> Cobrat</label>
   <div><label>Data de cobrament</label><input type="date" id="cobradoFecha" value="${v('cobradoFecha')}"></div></div>
-  <div class="card"><h2 style="border:0;margin:0;padding:0">Fitxers i enllaços de l'expedient</h2>${(j.files||[]).map((f,i)=>`<div class="row" style="align-items:center;justify-content:space-between"><a href="${esc(f.url)}" target="_blank" rel="noopener">🔗 ${esc(f.name)}</a><button class="dan" onclick="rmFile(${i})">Treure</button></div>`).join('')||'<p class="mu">Sense enllaços afegits.</p>'}<label style="margin-top:10px">Afegir un enllaç (Google Drive, Dropbox, OneDrive…)</label><input id="lname" placeholder="Nom de l'arxiu o document (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>
+  <div class="card"><h2 style="border:0;margin:0;padding:0">Fitxers de l'expedient</h2>${(j.files||[]).map((f,i)=>`<div class="row" style="align-items:center;justify-content:space-between"><a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name)}</a><button class="dan" onclick="rmFile(${i})">Treure</button></div>`).join('')||'<p class="mu">Sense fitxers.</p>'}<label style="margin-top:10px">Afegir un enllaç (Drive, Dropbox, OneDrive…)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>
   <div class="bar"><button class="pri" onclick="sv()">Desar</button>${items.some(x=>x.id===j.id)?'<button class="dan" onclick="del()">Eliminar</button>':''}</div>`;
 }
 
 const F=['expedient','proc','atestado','juzgado','adreca','fax','telefon','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'],C=['justificante','dad67','cobrado'];
-
 function collect(){F.forEach(k=>cur[k]=$('#'+k).value);C.forEach(k=>cur[k]=$('#'+k).checked)}
 function sync(){collect();$('#cal').href=calUrl(cur)}
 function sv(){collect();save(cur);back()}
 function del(){if(confirm('Vols eliminar aquest judici?')){remove(cur.id);back()}}
-
-function addLink(){
-  collect();
-  const u=$('#lurl').value.trim();
-  if(!/^https?:\/\//i.test(u)){alert('Escriu un enllaç que comenci per https://');return}
-  cur.files=cur.files||[];
-  cur.files.push({name:$('#lname').value.trim()||u,url:u,link:true});
-  save(cur);
-  render();
-}
-
+function addLink(){collect();const u=$('#lurl').value.trim();if(!/^https?:\/\//i.test(u)){alert('Escriu un enllaç que comenci per https://');return}
+  cur.files=cur.files||[];cur.files.push({name:$('#lname').value.trim()||u,url:u,link:true});save(cur);render()}
 function rmFile(i){collect();cur.files.splice(i,1);save(cur);render()}
-
-function parsePaste(){
-  collect();
-  const t=$('#paste').value,g=r=>{const m=t.match(r);return m?m[1].trim():''},st=(k,v)=>{if(v)cur[k]=v};
-  st('expedient',g(/Expedient:?\s*([^\n]+)/i));
-  st('juzgado',g(/[ÒO]rgan jurisdiccional:?\s*([^\n]+)/i));
-  st('adreca',g(/Adre[çc]a:?\s*([^\n]+)/i));
-  st('fax',g(/Fax:?\s*([^\n]+)/i));
-  st('telefon',g(/Tel[èe]fon:?\s*([^\n]+)/i));
-  
+function parsePaste(){collect();const t=$('#paste').value,g=r=>{const m=t.match(r);return m?m[1].trim():''},st=(k,v)=>{if(v)cur[k]=v};
+  st('expedient',g(/Expedient:?\s*([^\n]+)/i));st('juzgado',g(/[ÒO]rgan jurisdiccional:?\s*([^\n]+)/i));st('adreca',g(/Adre[çc]a:?\s*([^\n]+)/i));st('fax',g(/Fax:?\s*([^\n]+)/i));st('telefon',g(/Tel[èe]fon:?\s*([^\n]+)/i));
   const d=t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})[ \t]*([^\n]*)/);
   if(d){cur.fecha=d[3]+'-'+d[2].padStart(2,'0')+'-'+d[1].padStart(2,'0');cur.hora=d[4].padStart(2,'0')+':'+d[5];cur.sala=d[6].trim()}
-  
-  st('atestado',g(/Atestat:?\s*([^\n]+)/i));
-  st('proc',g(/Procediment:?\s*([^\n]+)/i));
-  st('qualitat',g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
-  st('objecte',g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
-  render();
-}
-
+  st('atestado',g(/Atestat:?\s*([^\n]+)/i));st('proc',g(/Procediment:?\s*([^\n]+)/i));st('qualitat',g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));st('objecte',g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
+  render()}
 function edit(id){cur=id?{...items.find(x=>x.id===id)}:{id:'j'+Date.now().toString(36)};view='form';render();scrollTo(0,0)}
 function back(){view='list';cur=null;render()}
 
-init();
+window.addEventListener('DOMContentLoaded', init);
 </script></body></html>
