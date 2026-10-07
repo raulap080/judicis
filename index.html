@@ -76,7 +76,6 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 </div>
 
 <script>
-// Evita el fallo de ejecuciones onload heredadas
 function initGoogleAuth() {}
 
 var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com';
@@ -85,6 +84,7 @@ var items = [];
 var view = 'list';
 var cur = null;
 var filter = 'todos';
+var sortBy = 'fecha_desc';
 var tokenClient = null;
 var accessToken = localStorage.getItem('gdrive_token') || null;
 
@@ -294,16 +294,34 @@ function render() {
       if (filter === 'cobro') return j.celebrado === 'si' && !j.cobrado;
       return true;
     }).sort(function(a, b) {
-      return (b.fecha || '').localeCompare(a.fecha || '');
+      if (sortBy === 'fecha_desc') return (b.fecha || '').localeCompare(a.fecha || '');
+      if (sortBy === 'fecha_asc') return (a.fecha || '').localeCompare(b.fecha || '');
+      if (sortBy === 'proc') return (a.proc || a.expedient || '').localeCompare(b.proc || b.expedient || '');
+      if (sortBy === 'juzgado') return (a.juzgado || '').localeCompare(b.juzgado || '');
+      if (sortBy === 'estado') return status(a)[0].localeCompare(status(b)[0]);
+      return 0;
     });
 
     var html = '<h1><div class="brand">' + logoSvg + '<span>Judicis</span></div><button class="pri" onclick="edit()">+ Nou</button></h1>';
-    html += '<select onchange="filter=this.value;render()" style="margin-bottom:12px">';
+    
+    html += '<div class="g2" style="margin-bottom:12px">';
+    html += '<div><label style="margin:0 0 2px 2px">Filtrar</label>';
+    html += '<select onchange="filter=this.value;render()">';
     html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
     html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
     html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
     html += '<option value="cobro"' + (filter === 'cobro' ? ' selected' : '') + '>Pendents de cobrament</option>';
-    html += '</select>';
+    html += '</select></div>';
+
+    html += '<div><label style="margin:0 0 2px 2px">Ordenar per</label>';
+    html += '<select onchange="sortBy=this.value;render()">';
+    html += '<option value="fecha_desc"' + (sortBy === 'fecha_desc' ? ' selected' : '') + '>📅 Data (més recents)</option>';
+    html += '<option value="fecha_asc"' + (sortBy === 'fecha_asc' ? ' selected' : '') + '>📅 Data (més antics)</option>';
+    html += '<option value="proc"' + (sortBy === 'proc' ? ' selected' : '') + '>📄 Núm. procediment / exp.</option>';
+    html += '<option value="juzgado"' + (sortBy === 'juzgado' ? ' selected' : '') + '>🏛️ Òrgan jurisdiccional</option>';
+    html += '<option value="estado"' + (sortBy === 'estado' ? ' selected' : '') + '>🏷️ Estat / Situació</option>';
+    html += '</select></div>';
+    html += '</div>';
 
     if (list.length) {
       list.forEach(function(j) {
