@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Registre de judicis</title>
+<!-- Icona SVG integrada per a pestanya i pantalla d'inici -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%231f4e9c'/><path d='M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72' stroke='%23ffffff' stroke-width='24' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='130' r='30' fill='%2358c58a'/></svg>">
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f}}
@@ -13,6 +15,9 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 main{max-width:720px;margin:0 auto;padding:14px}
 h1{font-size:20px;margin:4px 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:32px;height:32px;border-radius:8px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-icon svg{width:20px;height:20px}
 button,.btn,.btn-label{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 13px;border-radius:9px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
 .pri{background:var(--ac);color:#fff;border-color:var(--ac)}
 .dan{color:var(--er)}
@@ -36,7 +41,7 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 <body>
 <main id="app"></main>
 <script>
-var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com'; // SUBSTITUEIX PEL TEU CLIENT ID REAL DE GOOGLE
+var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com';
 var SCOPES = 'https://www.googleapis.com/auth/drive.file';
 var items = [];
 var view = 'list';
@@ -76,8 +81,6 @@ function init() {
 
 function initGoogleAuth() {
   if (typeof google === 'undefined' || !google.accounts) return;
-  if (!CLIENT_ID || CLIENT_ID === 'EL_TEU_CLIENT_ID_AQUI') return;
-  
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
@@ -96,17 +99,13 @@ function initGoogleAuth() {
 }
 
 function connectDrive() {
-  if (!CLIENT_ID || CLIENT_ID === 'EL_TEU_CLIENT_ID_AQUI') {
-    alert('S\'ha de configurar el Client ID de Google al codi HTML.');
-    return;
-  }
   if (!tokenClient) {
     initGoogleAuth();
   }
   if (tokenClient) {
     tokenClient.requestAccessToken();
   } else {
-    alert('S\'està carregant el servei de Google o la connexió ha fallat. Revisa que el Client ID sigui correcte.');
+    alert('S\'està carregant el servei de Google. Torna-ho a provar en un moment.');
   }
 }
 
@@ -248,6 +247,10 @@ function checkAndImportBackup(event) {
 function render() {
   var app = $('#app');
   if (!app) return;
+  
+  // SVG del logotip
+  var logoSvg = '<div class="brand-icon"><svg viewBox="0 0 512 512"><path d="M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72" stroke="%23ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>';
+
   if (view === 'list') {
     var list = items.filter(function(j) {
       if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
@@ -258,7 +261,7 @@ function render() {
       return (b.fecha || '').localeCompare(a.fecha || '');
     });
 
-    var html = '<h1>Registre de judicis <button class="pri" onclick="edit()">+ Nou</button></h1>';
+    var html = '<h1><div class="brand">' + logoSvg + '<span>Judicis</span></div><button class="pri" onclick="edit()">+ Nou</button></h1>';
     html += '<select onchange="filter=this.value;render()" style="margin-bottom:12px">';
     html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
     html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
@@ -291,7 +294,7 @@ function render() {
       html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
       html += '</div>';
     } else {
-      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per synchronitzar les teves dades automàticament entre mòbil i ordinador.</p>';
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament entre mòbil i ordinador.</p>';
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
       html += '</div>';
