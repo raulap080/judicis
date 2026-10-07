@@ -229,12 +229,18 @@ function render() {
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Fitxers de l\'expedient</h2>';
   if (j.files && j.files.length) {
     j.files.forEach(function(f, i) {
-      fHtml += '<div class="row" style="align-items:center;justify-content:space-between"><a href="' + esc(f.url) + '" target="_blank" rel="noopener">📎 ' + esc(f.name) + '</a><button class="dan" onclick="rmFile(' + i + ')">Treure</button></div>';
+      var dAttr = f.link ? 'target="_blank" rel="noopener"' : 'download="' + esc(f.name) + '"';
+      fHtml += '<div class="row" style="align-items:center;justify-content:space-between"><a href="' + esc(f.url) + '" ' + dAttr + '>📎 ' + esc(f.name) + '</a><button class="dan" onclick="rmFile(' + i + ')">Treure</button></div>';
     });
   } else {
     fHtml += '<p class="mu">Sense fitxers.</p>';
   }
-  fHtml += '<label style="margin-top:10px">Afegir un enllaç (Drive, Dropbox, OneDrive…)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>';
+  
+  fHtml += '<label style="margin-top:10px">Pujar fitxer local (PDF, imatge...)</label>';
+  fHtml += '<input type="file" id="fileDirect" onchange="uploadFile(event)">';
+  
+  fHtml += '<label style="margin-top:10px">O afegir un enllaç extern (Drive, Dropbox...)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>';
+  
   fHtml += '<div class="bar"><button class="pri" onclick="sv()">Desar</button>' + (isNew ? '' : '<button class="dan" onclick="del()">Eliminar</button>') + '</div>';
 
   app.innerHTML = fHtml;
@@ -251,6 +257,21 @@ function collect() {
 function sync() { collect(); $('#cal').href = calUrl(cur); }
 function sv() { collect(); save(cur); back(); }
 function del() { if (confirm('Vols eliminar aquest judici?')) { remove(cur.id); back(); } }
+
+function uploadFile(event) {
+  collect();
+  var file = event.target.files[0];
+  if (!file) return;
+  
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    cur.files = cur.files || [];
+    cur.files.push({ name: file.name, url: e.target.result, link: false });
+    save(cur);
+    render();
+  };
+  reader.readAsDataURL(file);
+}
 
 function addLink() {
   collect();
