@@ -621,7 +621,10 @@ function render() {
   fHtml += '</select>';
   fHtml += '<label>Modalitat real</label><select id="modalidad"><option value="presencial"' + (j.modalidad !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidad === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
   fHtml += '<div class="g2"><div><label>Hora d\'arribada</label><input type="time" id="llegada" value="' + v('llegada') + '"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '"></div></div>';
-  fHtml += '<label>Minuta policial</label><textarea id="minuta">' + v('minuta') + '</textarea>';
+  
+  fHtml += '<label>Minuta policial</label><textarea id="minuta" placeholder="Enganxa aquí la minuta policial si l\'has aconseguit posteriorment…">' + v('minuta') + '</textarea>';
+  fHtml += '<div class="bar" style="margin-top:6px;margin-bottom:12px"><button type="button" onclick="parseExistingMinuta()">🔍 Extreure detinguts i TIPs de la minuta</button></div>';
+
   fHtml += '<label>Persones denunciades</label><textarea id="denunciados" placeholder="Detinguts o investigats…">' + v('denunciados') + '</textarea>';
   fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos" placeholder="Agents TIPs o testimonis…">' + v('testigos') + '</textarea>';
   fHtml += '<h2>Cobrament</h2>';
@@ -699,6 +702,49 @@ function addLink() {
 
 function rmFile(i) { collect(); cur.files.splice(i, 1); save(cur); render(); }
 
+function parseExistingMinuta() {
+  collect();
+  var t = cur.minuta || '';
+  if (!t.trim()) {
+    alert('Afegeix primer el text de la minuta al camp correspondut.');
+    return;
+  }
+
+  // Extracció de TIPs d'agents
+  var tipsMatched = t.match(/TIP\s*(\d+)/gi);
+  var tipsSet = cur.testigos ? cur.testigos.split('\n').filter(Boolean) : [];
+  if (tipsMatched) {
+    tipsMatched.forEach(function(item) {
+      var num = item.replace(/TIP\s*/i, '').trim();
+      var formatted = 'TIP ' + num;
+      if (tipsSet.indexOf(formatted) === -1) {
+        tipsSet.push(formatted);
+      }
+    });
+  }
+
+  // Extracció de detinguts
+  var detinguts = cur.denunciados ? cur.denunciados.split('\n').filter(Boolean) : [];
+  
+  var matchesDet = t.matchAll(/-\s*([A-Za-zÀ-ÿ\s]+)\s+nascut[a]?\s+/gi);
+  for (var m of matchesDet) {
+    var nom = m[1].trim();
+    if (nom && detinguts.indexOf(nom) === -1) detinguts.push(nom);
+  }
+
+  var matchesSr = t.matchAll(/Sr\.\s+([A-Za-zÀ-ÿ\s]+)(?:amb|\,)/gi);
+  for (var m2 of matchesSr) {
+    var nomSr = m2[1].trim();
+    if (nomSr && nomSr.length > 2 && detinguts.indexOf(nomSr) === -1) detinguts.push(nomSr);
+  }
+
+  cur.testigos = tipsSet.join('\n');
+  cur.denunciados = detinguts.join('\n');
+
+  render();
+  alert('Dades de la minuta extretes correctament!');
+}
+
 function parsePaste() {
   collect();
   var t = $('#paste').value;
@@ -723,7 +769,7 @@ function parsePaste() {
   st('qualitat', g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
   st('objecte', g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
 
-  // --- EXTRACCIÓ D'AGENTS / TIPS ---
+  // Extracció d'Agents / TIPs
   var tipsMatched = t.match(/TIP\s*(\d+)/gi);
   if (tipsMatched) {
     var tipsSet = [];
@@ -738,7 +784,7 @@ function parsePaste() {
     }
   }
 
-  // --- EXTRACCIÓ DE PERSONES DETINGUDES / IMPLICADES ---
+  // Extracció de detinguts
   var detinguts = [];
   
   var matchesDet = t.matchAll(/-\s*([A-Za-zÀ-ÿ\s]+)\s+nascut[a]?\s+/gi);
