@@ -30,6 +30,7 @@ textarea{min-height:80px;resize:vertical}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .chk{display:flex;align-items:center;gap:8px;margin:10px 0 0;color:var(--tx);font-size:15px}
 .chk input{width:auto}
+.chk.disabled{opacity:0.5;cursor:not-allowed}
 h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd)}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .mu{color:var(--mu);font-size:13px}
@@ -286,7 +287,7 @@ function status(j) {
   if (j.celebrado === 'no' || j.celebrado === 'suspendido') return ['Suspès', 'er'];
   if (j.celebrado !== 'si') return ['Pendent', 'wa'];
   if (j.cobrado) return ['Cobrat', 'ok'];
-  if (j.dad67) return ['DAD 67 presentada', 'wa'];
+  if (j.dad67) return ['DAD 67 presentada · Pendent cobrament', 'wa'];
   return ['Celebrat · falta DAD 67', 'wa'];
 }
 
@@ -431,7 +432,8 @@ function render() {
         }
         if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
         if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
-        if (filter === 'cobro') return j.celebrado === 'si' && !j.cobrado;
+        // PENDENTS DE COBRAMENT: Celebrats + DAD 67 presentada + No cobrats
+        if (filter === 'cobro') return j.celebrado === 'si' && j.dad67 && !j.cobrado;
         return true;
       }).sort(function(a, b) {
         if (sortBy === 'proximos' || sortBy === 'fecha_asc') return (a.fecha || '').localeCompare(b.fecha || '');
@@ -457,7 +459,7 @@ function render() {
       html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
       html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
       html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
-      html += '<option value="cobro"' + (filter === 'cobro' ? ' selected' : '') + '>Pendents de cobrament</option>';
+      html += '<option value="cobro"' + (filter === 'cobro' ? ' selected' : '') + '>Pendents de cobrament (amb DAD 67)</option>';
       html += '</select></div>';
 
       html += '<div><label style="margin:0 0 2px 2px">Ordenar per</label>';
@@ -535,6 +537,7 @@ function render() {
   var v = function(k) { return esc(j[k] || ''); };
   var ck = function(k) { return j[k] ? 'checked' : ''; };
   var isNew = !items.some(function(x) { return x.id === j.id; });
+  var isCelebrado = (j.celebrado === 'si');
 
   var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="back()">Tancar</button></h1>';
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>';
@@ -555,7 +558,7 @@ function render() {
   fHtml += '<p class="mu">S\'obre Google Calendar amb l\'esdeveniment a punt per confirmar.</p></div>';
   
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Seguiment</h2>';
-  fHtml += '<label>S\'ha celebrat?</label><select id="celebrado">';
+  fHtml += '<label>S\'ha celebrat?</label><select id="celebrado" onchange="onCelebradoChange(this.value)">';
   [['', 'Pendent'], ['si', 'Sí'], ['no', 'No'], ['suspendido', 'Suspès']].forEach(function(o) {
     fHtml += '<option value="' + o[0] + '"' + ((j.celebrado || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
   });
@@ -567,8 +570,10 @@ function render() {
   fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos">' + v('testigos') + '</textarea>';
   fHtml += '<h2>Cobrament</h2>';
   fHtml += '<label class="chk"><input type="checkbox" id="justificante" ' + ck('justificante') + '> Tinc el justificant</label>';
-  fHtml += '<label class="chk"><input type="checkbox" id="dad67" ' + ck('dad67') + '> Sol·licitud DAD 67 presentada</label>';
-  fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '"></div>';
+  
+  // Només habilitat si s'ha celebrat
+  fHtml += '<label class="chk' + (!isCelebrado ? ' disabled' : '') + '"><input type="checkbox" id="dad67" ' + ck('dad67') + ' ' + (!isCelebrado ? 'disabled' : '') + '> Sol·licitud DAD 67 presentada' + (!isCelebrado ? ' (cal marcar el judici com a celebrat)' : '') + '</label>';
+  fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '" ' + (!isCelebrado ? 'disabled' : '') + '></div>';
   fHtml += '<label class="chk"><input type="checkbox" id="cobrado" ' + ck('cobrado') + '> Cobrat</label>';
   fHtml += '<div><label>Data de cobrament</label><input type="date" id="cobradoFecha" value="' + v('cobradoFecha') + '"></div></div>';
   
@@ -590,6 +595,14 @@ function render() {
   fHtml += '<div class="bar"><button class="pri" onclick="sv()">Desar</button>' + (isNew ? '' : '<button class="dan" onclick="del()">Eliminar</button>') + '</div>';
 
   app.innerHTML = fHtml;
+}
+
+function onCelebradoChange(val) {
+  collect();
+  if (val !== 'si') {
+    cur.dad67 = false;
+  }
+  render();
 }
 
 var F = ['expedient','proc','atestado','juzgado','adreca','fax','telefon','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'];
