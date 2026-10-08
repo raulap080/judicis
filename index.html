@@ -9,17 +9,17 @@
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-main{max-width:720px;margin:0 auto;padding:14px}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow-x:hidden}
+main{max-width:720px;margin:0 auto;padding:12px;width:100%}
 h1{font-size:20px;margin:4px 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .brand{display:flex;align-items:center;gap:10px}
 .brand-icon{width:36px;height:36px;border-radius:99px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .brand-icon svg{width:22px;height:22px;display:block}
-button,.btn,.btn-label{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 13px;border-radius:99px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+button,.btn,.btn-label{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 12px;border-radius:99px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
 button:disabled{opacity:0.5;cursor:not-allowed}
 .pri{background:var(--ac);color:#fff;border-color:var(--ac)}
 .dan{color:var(--er)}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px;width:100%}
 .item{cursor:pointer}.item b{display:block}
 .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mu)}
@@ -36,19 +36,21 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 
 /* Selector de Vistes */
 .view-switcher{display:flex;background:var(--bd);padding:3px;border-radius:99px;gap:2px}
-.view-btn{border:none;background:none;padding:6px 14px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;color:var(--mu)}
+.view-btn{border:none;background:none;padding:6px 12px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;color:var(--mu)}
 .view-btn.active{background:var(--card);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,0.1)}
 
-/* Calendari */
+/* Calendari Adaptat */
+.cal-wrapper{width:100%;overflow-x:auto}
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.cal-title{font-weight:bold;font-size:16px;text-transform:capitalize}
-.cal-grid{display:grid;grid-template-columns:repeat(7, 1fr);gap:4px;text-align:center}
-.cal-day-name{font-size:12px;font-weight:bold;color:var(--mu);padding:4px 0}
-.cal-day{background:var(--card);border:1px solid var(--bd);border-radius:8px;min-height:70px;padding:4px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;font-size:12px;position:relative}
-.cal-day.other-month{opacity:0.35;background:none}
-.cal-day.today{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
-.cal-day-num{font-weight:bold;margin-bottom:4px;font-size:11px}
-.cal-event{background:var(--ac);color:#fff;border-radius:4px;padding:2px 4px;font-size:10px;margin-bottom:2px;width:100%;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cal-title{font-weight:bold;font-size:15px;text-transform:capitalize}
+.cal-grid{display:grid;grid-template-columns:repeat(7, 1fr);gap:3px;min-width:300px}
+.cal-day-name{font-size:11px;font-weight:bold;color:var(--mu);padding:4px 0;text-align:center}
+.cal-day{background:var(--bg);border:1px solid var(--bd);border-radius:6px;min-height:64px;padding:3px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;font-size:11px;overflow:hidden}
+.cal-day.other-month{opacity:0.3;background:none}
+.cal-day.today{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac);background:var(--card)}
+.cal-day-num{font-weight:bold;margin-bottom:2px;font-size:11px;text-align:right;padding-right:2px;color:var(--mu)}
+.cal-day.today .cal-day-num{color:var(--ac)}
+.cal-event{background:var(--ac);color:#fff;border-radius:3px;padding:2px 3px;font-size:9px;line-height:1.2;margin-bottom:2px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border:none;text-align:left}
 .cal-event.er{background:var(--er)}
 .cal-event.ok{background:var(--ok)}
 .cal-event.wa{background:var(--wa)}
@@ -105,13 +107,13 @@ function initGoogleAuth() {}
 var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com';
 var SCOPES = 'https://www.googleapis.com/auth/drive.file';
 var items = [];
-var view = localStorage.getItem('juicios_view') || 'calendar'; // 'calendar', 'list' o 'form'
+var view = localStorage.getItem('juicios_view') || 'calendar';
 var cur = null;
 
 var filter = localStorage.getItem('juicios_filter') || 'todos';
 var sortBy = localStorage.getItem('juicios_sort') || 'proximos';
 
-var calDate = new Date(); // Data de navegació del calendari
+var calDate = new Date();
 var currentPage = 1;
 var pageSize = 10;
 var tokenClient = null;
@@ -347,13 +349,13 @@ function renderCalendar() {
   var firstDay = new Date(year, month, 1);
   var lastDay = new Date(year, month + 1, 0);
   
-  var startDayOfWeek = (firstDay.getDay() + 6) % 7; // Dilluns = 0
+  var startDayOfWeek = (firstDay.getDay() + 6) % 7;
   var totalDays = lastDay.getDate();
   
   var monthNames = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
   var todayStr = new Date().toISOString().split('T')[0];
 
-  var html = '<div class="card">';
+  var html = '<div class="card" style="padding:10px">';
   html += '<div class="cal-header">';
   html += '<button onclick="changeMonth(-1)">◀</button>';
   html += '<span class="cal-title">' + monthNames[month] + ' ' + year + '</span>';
@@ -362,18 +364,16 @@ function renderCalendar() {
   html += '<button onclick="changeMonth(1)">▶</button>';
   html += '</div></div>';
 
-  html += '<div class="cal-grid">';
+  html += '<div class="cal-wrapper"><div class="cal-grid">';
   ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'].forEach(function(d) {
     html += '<div class="cal-day-name">' + d + '</div>';
   });
 
-  // Dies del mes anterior per omplir la primera setmana
   var prevMonthLastDay = new Date(year, month, 0).getDate();
   for (var i = startDayOfWeek - 1; i >= 0; i--) {
     html += '<div class="cal-day other-month"><span class="cal-day-num">' + (prevMonthLastDay - i) + '</span></div>';
   }
 
-  // Dies del mes actual
   for (var day = 1; day <= totalDays; day++) {
     var mStr = String(month + 1).padStart(2, '0');
     var dStr = String(day).padStart(2, '0');
@@ -394,14 +394,13 @@ function renderCalendar() {
     html += '</div>';
   }
 
-  // Dies del mes següent per completar la graella
   var totalCells = startDayOfWeek + totalDays;
   var nextDays = (7 - (totalCells % 7)) % 7;
   for (var n = 1; n <= nextDays; n++) {
     html += '<div class="cal-day other-month"><span class="cal-day-num">' + n + '</span></div>';
   }
 
-  html += '</div></div>';
+  html += '</div></div></div>';
   return html;
 }
 
@@ -414,7 +413,6 @@ function render() {
   if (view === 'calendar' || view === 'list') {
     var html = '<h1><div class="brand">' + logoSvg + '<span>Judicis</span></div><button class="pri" onclick="edit()">+ Nou</button></h1>';
 
-    // Barra superior amb commutador de vista (Calendari / Llista)
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
     html += '<div class="view-switcher">';
     html += '<button class="view-btn' + (view === 'calendar' ? ' active' : '') + '" onclick="setMainView(\'calendar\')">📅 Calendari</button>';
@@ -425,7 +423,6 @@ function render() {
     if (view === 'calendar') {
       html += renderCalendar();
     } else {
-      // MODO LLISTA
       var todayStr = new Date().toISOString().split('T')[0];
 
       var list = items.filter(function(j) {
@@ -508,7 +505,6 @@ function render() {
       }
     }
 
-    // Secció comuna de Google Drive i Còpia Manual
     html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
     if (accessToken) {
       html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive.</p>';
@@ -517,7 +513,7 @@ function render() {
       html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
       html += '</div>';
     } else {
-      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per synchronitzar les teves dades automàticament.</p>';
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
       html += '<button onclick="obrirModalDrive()">ℹ️ Info / Sol·licitar accés</button>';
@@ -535,7 +531,6 @@ function render() {
     return;
   }
 
-  // FORMULARI D'EDICIÓ
   var j = cur;
   var v = function(k) { return esc(j[k] || ''); };
   var ck = function(k) { return j[k] ? 'checked' : ''; };
@@ -689,4 +684,3 @@ document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
-
