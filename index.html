@@ -6,8 +6,8 @@
 <title>Registre de judicis</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%231f4e9c'/><path d='M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='130' r='30' fill='%2358c58a'/></svg>">
 <style>
-:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f}}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e;--double:#8e24aa}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f;--double:#ba68c8}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow-x:hidden}
 main{max-width:720px;margin:0 auto;padding:12px;width:100%}
@@ -23,7 +23,7 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 .item{cursor:pointer}.item b{display:block}
 .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mu)}
-.ok{color:var(--ok);border-color:var(--ok)}.wa{color:var(--wa);border-color:var(--wa)}.er{color:var(--er);border-color:var(--er)}
+.ok{color:var(--ok);border-color:var(--ok)}.wa{color:var(--wa);border-color:var(--wa)}.er{color:var(--er);border-color:var(--er)}.double-tag{color:var(--double);border-color:var(--double);font-weight:bold}
 label{display:block;font-size:13px;color:var(--mu);margin:10px 0 3px}
 input,select,textarea{width:100%;font:inherit;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
 textarea{min-height:80px;resize:vertical}
@@ -61,6 +61,7 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .cal-event.er{background:var(--er)}
 .cal-event.ok{background:var(--ok)}
 .cal-event.wa{background:var(--wa)}
+.cal-event.double-cobro{background:var(--double)!important;font-weight:bold}
 
 /* Paginació */
 .pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0}
@@ -72,6 +73,7 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .modal-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;color:var(--mu);cursor:pointer;padding:4px}
 .badge-test{display:inline-block;background:var(--wa);color:#fff;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:99px;margin-bottom:8px}
 .info-box{background:var(--bg);border-left:4px solid var(--ac);padding:12px;border-radius:6px;margin:14px 0}
+.info-box.double{border-left-color:var(--double);background:rgba(142,36,170,0.08)}
 .btn-sol{display:inline-block;background:var(--ac);color:#fff;text-decoration:none;padding:10px 16px;border-radius:99px;font-weight:500;margin-top:8px;text-align:center}
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -324,6 +326,38 @@ function calUrl(j) {
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent((j.objecte || 'Judici') + ' ' + (j.proc || j.expedient || '')) + '&dates=' + d + 'T' + s + '/' + d + 'T' + e + '&ctz=Europe/Madrid&location=' + encodeURIComponent([j.juzgado, j.adreca, j.sala].filter(Boolean).join(', ')) + '&details=' + encodeURIComponent(det);
 }
 
+function timeToMinutes(tStr) {
+  if (!tStr) return null;
+  var p = tStr.split(':');
+  if (p.length < 2) return null;
+  return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+}
+
+// Retorna l'estat de la jornada per a una data concreta
+function getDayCobroInfo(dateKey) {
+  var dayEvents = items.filter(function(x) { return x.fecha === dateKey; });
+  if (dayEvents.length < 2) return { isDouble: false, count: dayEvents.length, diffMin: 0 };
+
+  var minStart = 1440;
+  var maxEnd = 0;
+
+  dayEvents.forEach(function(x) {
+    var start = timeToMinutes(x.llegada) || timeToMinutes(x.hora);
+    var end = timeToMinutes(x.salida) || (start ? start + 60 : null);
+    if (start !== null && start < minStart) minStart = start;
+    if (end !== null && end > maxEnd) maxEnd = end;
+  });
+
+  var diff = (maxEnd > minStart) ? (maxEnd - minStart) : 0;
+  return {
+    isDouble: diff > 180, // Més de 3 hores (180 minuts)
+    count: dayEvents.length,
+    diffMin: diff,
+    minStart: minStart,
+    maxEnd: maxEnd
+  };
+}
+
 function exportBackup() {
   var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items };
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
@@ -409,10 +443,13 @@ function renderListHTML() {
   if (pagedList.length) {
     pagedList.forEach(function(j) {
       var st = status(j);
+      var dayInfo = j.fecha ? getDayCobroInfo(j.fecha) : { isDouble: false };
+      
       html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
       html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
       html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
       html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
+      if (dayInfo.isDouble) html += '<span class="tag double-tag">⚡ 2n Cobrament (>3h)</span>';
       if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
       if (j.justificante) html += '<span class="tag ok">Justificant</span>';
       if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
@@ -483,14 +520,18 @@ function renderCalendar() {
     var isToday = dateKey === todayStr;
 
     var dayEvents = items.filter(function(j) { return j.fecha === dateKey; });
+    var dayInfo = getDayCobroInfo(dateKey);
 
     html += '<div class="cal-day' + (isToday ? ' today' : '') + '">';
     html += '<span class="cal-day-num">' + day + '</span>';
 
-    dayEvents.forEach(function(j) {
+    dayEvents.forEach(function(j, idx) {
       var st = status(j);
-      var label = (j.hora ? j.hora + ' ' : '') + (j.proc || j.objecte || 'Judici');
-      html += '<div class="cal-event ' + st[1] + '" title="' + esc(label) + '" onclick="event.stopPropagation();edit(\'' + j.id + '\')">' + esc(label) + '</div>';
+      var isSecondCobro = (dayInfo.isDouble && idx > 0); // El segon judici o posteriors del mateix dia (>3h)
+      var extraClass = isSecondCobro ? ' double-cobro' : (' ' + st[1]);
+      var label = (j.hora ? j.hora + ' ' : '') + (j.proc || j.objecte || 'Judici') + (isSecondCobro ? ' (2n cobram.)' : '');
+      
+      html += '<div class="cal-event' + extraClass + '" title="' + esc(label) + '" onclick="event.stopPropagation();edit(\'' + j.id + '\')">' + esc(label) + '</div>';
     });
 
     html += '</div>';
@@ -594,6 +635,7 @@ function render() {
   var ck = function(k) { return j[k] ? 'checked' : ''; };
   var isNew = !items.some(function(x) { return x.id === j.id; });
   var isCelebrado = (j.celebrado === 'si');
+  var dayInfo = j.fecha ? getDayCobroInfo(j.fecha) : { isDouble: false };
 
   var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="back()">Tancar</button></h1>';
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>';
@@ -628,6 +670,14 @@ function render() {
   fHtml += '<label>Persones denunciades</label><textarea id="denunciados" placeholder="Detinguts o investigats…">' + v('denunciados') + '</textarea>';
   fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos" placeholder="Agents TIPs o testimonis…">' + v('testigos') + '</textarea>';
   fHtml += '<h2>Cobrament</h2>';
+
+  if (dayInfo.isDouble) {
+    fHtml += '<div class="info-box double" style="margin:10px 0">';
+    fHtml += '<b style="color:var(--double);font-size:14px;display:block">⚡ Aquesta jornada supera les 3 hores entre judicis!</b>';
+    fHtml += '<p class="mu" style="margin:4px 0 0;font-size:12px">Aquest dia hi ha ' + dayInfo.count + ' judicis registrats amb un temps transcorregut superior a 3h. Tens dret a <b>2 cobraments / assistències</b> per aquesta jornada.</p>';
+    fHtml += '</div>';
+  }
+
   fHtml += '<label class="chk"><input type="checkbox" id="justificante" ' + ck('justificante') + '> Tinc el justificant</label>';
   
   fHtml += '<label class="chk' + (!isCelebrado ? ' disabled' : '') + '"><input type="checkbox" id="dad67" ' + ck('dad67') + ' ' + (!isCelebrado ? 'disabled' : '') + '> Sol·licitud DAD 67 presentada' + (!isCelebrado ? ' (cal marcar el judici com a celebrat)' : '') + '</label>';
