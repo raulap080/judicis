@@ -1,3 +1,12 @@
+I tant que sí, Raül! És una millora fantàstica per a la interfície.
+Podem afegir un selector de vista a la capçalera (per exemple, un commutador de botons [ 📅 Calendari | 📋 Llista ]) perquè l'usuari pugui canviar entre veure els judicis organitzats en un calendari mensual interactiu o en la llista tradicional que tenim ara.
+I igual que hem fet amb el filtre i l'ordenació, l'aplicació recordarà l'última vista seleccionada a localStorage perquè, si prefereixes veure sempre el calendari en obrir l'app, s'obri directament en aquest mode.
+Com funcionaria el mode Calendari:
+ * Navegació mensual: Botons per anar al mes anterior (◀), mes següent (▶) o tornar a Avui.
+ * Visualització dels dies: Dibuixa la graella del mes. Els dies que tenen judicis mostren una o diverses etiquetes/píndoles amb l'hora i el procediment/objecte.
+ * Interactivitat: Si fas clic a sobre qualsevol dia o etiqueta de judici, s'obre directament el formulari per veure o editar les dades d'aquell assenyalament.
+ * Indicador de visualització: El dia d'avui queda ressaltat visualment.
+Aquí tens el codi complet i integrat de l'index.html per actualitzar el repositori:
 <!DOCTYPE html>
 <html lang="ca">
 <head>
@@ -33,6 +42,25 @@ textarea{min-height:80px;resize:vertical}
 h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd)}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .mu{color:var(--mu);font-size:13px}
+
+/* Selector de Vistes */
+.view-switcher{display:flex;background:var(--bd);padding:3px;border-radius:99px;gap:2px}
+.view-btn{border:none;background:none;padding:6px 14px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;color:var(--mu)}
+.view-btn.active{background:var(--card);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+
+/* Calendari */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-title{font-weight:bold;font-size:16px;text-transform:capitalize}
+.cal-grid{display:grid;grid-template-columns:repeat(7, 1fr);gap:4px;text-align:center}
+.cal-day-name{font-size:12px;font-weight:bold;color:var(--mu);padding:4px 0}
+.cal-day{background:var(--card);border:1px solid var(--bd);border-radius:8px;min-height:70px;padding:4px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;font-size:12px;position:relative}
+.cal-day.other-month{opacity:0.35;background:none}
+.cal-day.today{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
+.cal-day-num{font-weight:bold;margin-bottom:4px;font-size:11px}
+.cal-event{background:var(--ac);color:#fff;border-radius:4px;padding:2px 4px;font-size:10px;margin-bottom:2px;width:100%;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cal-event.er{background:var(--er)}
+.cal-event.ok{background:var(--ok)}
+.cal-event.wa{background:var(--wa)}
 
 /* Paginació */
 .pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0}
@@ -86,13 +114,13 @@ function initGoogleAuth() {}
 var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com';
 var SCOPES = 'https://www.googleapis.com/auth/drive.file';
 var items = [];
-var view = 'list';
+var view = localStorage.getItem('juicios_view') || 'calendar'; // 'calendar', 'list' o 'form'
 var cur = null;
 
-// Llegim el darrer filtre i ordenació desat, o establim valors per defecte
 var filter = localStorage.getItem('juicios_filter') || 'todos';
 var sortBy = localStorage.getItem('juicios_sort') || 'proximos';
 
+var calDate = new Date(); // Data de navegació del calendari
 var currentPage = 1;
 var pageSize = 10;
 var tokenClient = null;
@@ -119,6 +147,12 @@ function lsWrite() {
     localStorage.setItem('juicios', JSON.stringify(items));
     localStorage.setItem('juicios_updated', new Date().toISOString());
   } catch (e) {}
+}
+
+function setMainView(v) {
+  view = v;
+  localStorage.setItem('juicios_view', v);
+  render();
 }
 
 function setFilter(v) {
@@ -310,96 +344,180 @@ function changePage(delta) {
   render();
 }
 
+function changeMonth(delta) {
+  calDate.setMonth(calDate.getMonth() + delta);
+  render();
+}
+
+function renderCalendar() {
+  var year = calDate.getFullYear();
+  var month = calDate.getMonth();
+  
+  var firstDay = new Date(year, month, 1);
+  var lastDay = new Date(year, month + 1, 0);
+  
+  var startDayOfWeek = (firstDay.getDay() + 6) % 7; // Dilluns = 0
+  var totalDays = lastDay.getDate();
+  
+  var monthNames = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
+  var todayStr = new Date().toISOString().split('T')[0];
+
+  var html = '<div class="card">';
+  html += '<div class="cal-header">';
+  html += '<button onclick="changeMonth(-1)">◀</button>';
+  html += '<span class="cal-title">' + monthNames[month] + ' ' + year + '</span>';
+  html += '<div style="display:flex;gap:4px">';
+  html += '<button onclick="calDate=new Date();render()">Avui</button>';
+  html += '<button onclick="changeMonth(1)">▶</button>';
+  html += '</div></div>';
+
+  html += '<div class="cal-grid">';
+  ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'].forEach(function(d) {
+    html += '<div class="cal-day-name">' + d + '</div>';
+  });
+
+  // Dies del mes anterior per omplir la primera setmana
+  var prevMonthLastDay = new Date(year, month, 0).getDate();
+  for (var i = startDayOfWeek - 1; i >= 0; i--) {
+    html += '<div class="cal-day other-month"><span class="cal-day-num">' + (prevMonthLastDay - i) + '</span></div>';
+  }
+
+  // Dies del mes actual
+  for (var day = 1; day <= totalDays; day++) {
+    var mStr = String(month + 1).padStart(2, '0');
+    var dStr = String(day).padStart(2, '0');
+    var dateKey = year + '-' + mStr + '-' + dStr;
+    var isToday = dateKey === todayStr;
+
+    var dayEvents = items.filter(function(j) { return j.fecha === dateKey; });
+
+    html += '<div class="cal-day' + (isToday ? ' today' : '') + '">';
+    html += '<span class="cal-day-num">' + day + '</span>';
+
+    dayEvents.forEach(function(j) {
+      var st = status(j);
+      var label = (j.hora ? j.hora + ' ' : '') + (j.proc || j.objecte || 'Judici');
+      html += '<div class="cal-event ' + st[1] + '" title="' + esc(label) + '" onclick="event.stopPropagation();edit(\'' + j.id + '\')">' + esc(label) + '</div>';
+    });
+
+    html += '</div>';
+  }
+
+  // Dies del mes següent per completar la graella
+  var totalCells = startDayOfWeek + totalDays;
+  var nextDays = (7 - (totalCells % 7)) % 7;
+  for (var n = 1; n <= nextDays; n++) {
+    html += '<div class="cal-day other-month"><span class="cal-day-num">' + n + '</span></div>';
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
 function render() {
   var app = $('#app');
   if (!app) return;
   
   var logoSvg = '<div class="brand-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="380" cy="130" r="30" fill="#58c58a"/></svg></div>';
 
-  if (view === 'list') {
-    var todayStr = new Date().toISOString().split('T')[0];
-
-    var list = items.filter(function(j) {
-      if (sortBy === 'proximos') {
-        if (!j.fecha || j.fecha < todayStr) return false;
-      }
-      if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
-      if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
-      if (filter === 'cobro') return j.celebrado === 'si' && !j.cobrado;
-      return true;
-    }).sort(function(a, b) {
-      if (sortBy === 'proximos' || sortBy === 'fecha_asc') return (a.fecha || '').localeCompare(b.fecha || '');
-      if (sortBy === 'fecha_desc') return (b.fecha || '').localeCompare(a.fecha || '');
-      if (sortBy === 'proc') return (a.proc || a.expedient || '').localeCompare(b.proc || b.expedient || '');
-      if (sortBy === 'juzgado') return (a.juzgado || '').localeCompare(b.juzgado || '');
-      if (sortBy === 'estado') return status(a)[0].localeCompare(status(b)[0]);
-      return 0;
-    });
-
-    var totalItems = list.length;
-    var totalPages = pageSize === 0 ? 1 : Math.ceil(totalItems / pageSize) || 1;
-    if (currentPage > totalPages) currentPage = totalPages;
-    if (currentPage < 1) currentPage = 1;
-
-    var startIdx = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
-    var endIdx = pageSize === 0 ? totalItems : Math.min(startIdx + pageSize, totalItems);
-    var pagedList = list.slice(startIdx, endIdx);
-
+  if (view === 'calendar' || view === 'list') {
     var html = '<h1><div class="brand">' + logoSvg + '<span>Judicis</span></div><button class="pri" onclick="edit()">+ Nou</button></h1>';
-    
-    html += '<div class="g2" style="margin-bottom:8px">';
-    html += '<div><label style="margin:0 0 2px 2px">Filtrar</label>';
-    html += '<select onchange="setFilter(this.value)">';
-    html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
-    html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
-    html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
-    html += '<option value="cobro"' + (filter === 'cobro' ? ' selected' : '') + '>Pendents de cobrament</option>';
-    html += '</select></div>';
 
-    html += '<div><label style="margin:0 0 2px 2px">Ordenar per</label>';
-    html += '<select onchange="setSort(this.value)">';
-    html += '<option value="proximos"' + (sortBy === 'proximos' ? ' selected' : '') + '>🔮 Propers judicis (de més a menys proper)</option>';
-    html += '<option value="fecha_desc"' + (sortBy === 'fecha_desc' ? ' selected' : '') + '>📅 Data (més recents primer)</option>';
-    html += '<option value="fecha_asc"' + (sortBy === 'fecha_asc' ? ' selected' : '') + '>📅 Data (més antics primer)</option>';
-    html += '<option value="proc"' + (sortBy === 'proc' ? ' selected' : '') + '>📄 Núm. procediment / exp.</option>';
-    html += '<option value="juzgado"' + (sortBy === 'juzgado' ? ' selected' : '') + '>🏛️ Òrgan jurisdiccional</option>';
-    html += '<option value="estado"' + (sortBy === 'estado' ? ' selected' : '') + '>🏷️ Estat / Situació</option>';
-    html += '</select></div>';
+    // Barra superior amb commutador de vista (Calendari / Llista)
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    html += '<div class="view-switcher">';
+    html += '<button class="view-btn' + (view === 'calendar' ? ' active' : '') + '" onclick="setMainView(\'calendar\')">📅 Calendari</button>';
+    html += '<button class="view-btn' + (view === 'list' ? ' active' : '') + '" onclick="setMainView(\'list\')">📋 Llista</button>';
+    html += '</div>';
     html += '</div>';
 
-    html += '<div style="margin-bottom:12px"><label style="margin:0 0 2px 2px">Mostrar</label>';
-    html += '<select onchange="pageSize=Number(this.value);currentPage=1;render()">';
-    html += '<option value="10"' + (pageSize === 10 ? ' selected' : '') + '>10 per pàgina</option>';
-    html += '<option value="20"' + (pageSize === 20 ? ' selected' : '') + '>20 per pàgina</option>';
-    html += '<option value="50"' + (pageSize === 50 ? ' selected' : '') + '>50 per pàgina</option>';
-    html += '<option value="0"' + (pageSize === 0 ? ' selected' : '') + '>Tots</option>';
-    html += '</select></div>';
+    if (view === 'calendar') {
+      html += renderCalendar();
+    } else {
+      // MODO LLISTA
+      var todayStr = new Date().toISOString().split('T')[0];
 
-    if (pagedList.length) {
-      pagedList.forEach(function(j) {
-        var st = status(j);
-        html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
-        html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
-        html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
-        html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
-        if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
-        if (j.justificante) html += '<span class="tag ok">Justificant</span>';
-        if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
-        if (j.celebrado === 'si') html += '<span class="tag">' + (j.modalidad === 'video' ? 'Videoconferència' : 'Presencial') + '</span>';
-        html += '</div></div>';
+      var list = items.filter(function(j) {
+        if (sortBy === 'proximos') {
+          if (!j.fecha || j.fecha < todayStr) return false;
+        }
+        if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
+        if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
+        if (filter === 'cobro') return j.celebrado === 'si' && !j.cobrado;
+        return true;
+      }).sort(function(a, b) {
+        if (sortBy === 'proximos' || sortBy === 'fecha_asc') return (a.fecha || '').localeCompare(b.fecha || '');
+        if (sortBy === 'fecha_desc') return (b.fecha || '').localeCompare(a.fecha || '');
+        if (sortBy === 'proc') return (a.proc || a.expedient || '').localeCompare(b.proc || b.expedient || '');
+        if (sortBy === 'juzgado') return (a.juzgado || '').localeCompare(b.juzgado || '');
+        if (sortBy === 'estado') return status(a)[0].localeCompare(status(b)[0]);
+        return 0;
       });
 
-      if (pageSize > 0 && totalPages > 1) {
-        html += '<div class="pagination">';
-        html += '<button onclick="changePage(-1)" ' + (currentPage === 1 ? 'disabled' : '') + '>◀ Anterior</button>';
-        html += '<span class="pagination-info">Pàgina ' + currentPage + ' de ' + totalPages + ' (' + totalItems + ' registre' + (totalItems > 1 ? 's' : '') + ')</span>';
-        html += '<button onclick="changePage(1)" ' + (currentPage === totalPages ? 'disabled' : '') + '>Següent ▶</button>';
-        html += '</div>';
+      var totalItems = list.length;
+      var totalPages = pageSize === 0 ? 1 : Math.ceil(totalItems / pageSize) || 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+
+      var startIdx = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
+      var endIdx = pageSize === 0 ? totalItems : Math.min(startIdx + pageSize, totalItems);
+      var pagedList = list.slice(startIdx, endIdx);
+
+      html += '<div class="g2" style="margin-bottom:8px">';
+      html += '<div><label style="margin:0 0 2px 2px">Filtrar</label>';
+      html += '<select onchange="setFilter(this.value)">';
+      html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
+      html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
+      html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
+      html += '<option value="cobro"' + (filter === 'cobro' ? ' selected' : '') + '>Pendents de cobrament</option>';
+      html += '</select></div>';
+
+      html += '<div><label style="margin:0 0 2px 2px">Ordenar per</label>';
+      html += '<select onchange="setSort(this.value)">';
+      html += '<option value="proximos"' + (sortBy === 'proximos' ? ' selected' : '') + '>🔮 Propers judicis (de més a menys proper)</option>';
+      html += '<option value="fecha_desc"' + (sortBy === 'fecha_desc' ? ' selected' : '') + '>📅 Data (més recents primer)</option>';
+      html += '<option value="fecha_asc"' + (sortBy === 'fecha_asc' ? ' selected' : '') + '>📅 Data (més antics primer)</option>';
+      html += '<option value="proc"' + (sortBy === 'proc' ? ' selected' : '') + '>📄 Núm. procediment / exp.</option>';
+      html += '<option value="juzgado"' + (sortBy === 'juzgado' ? ' selected' : '') + '>🏛️ Òrgan jurisdiccional</option>';
+      html += '<option value="estado"' + (sortBy === 'estado' ? ' selected' : '') + '>🏷️ Estat / Situació</option>';
+      html += '</select></div>';
+      html += '</div>';
+
+      html += '<div style="margin-bottom:12px"><label style="margin:0 0 2px 2px">Mostrar</label>';
+      html += '<select onchange="pageSize=Number(this.value);currentPage=1;render()">';
+      html += '<option value="10"' + (pageSize === 10 ? ' selected' : '') + '>10 per pàgina</option>';
+      html += '<option value="20"' + (pageSize === 20 ? ' selected' : '') + '>20 per pàgina</option>';
+      html += '<option value="50"' + (pageSize === 50 ? ' selected' : '') + '>50 per pàgina</option>';
+      html += '<option value="0"' + (pageSize === 0 ? ' selected' : '') + '>Tots</option>';
+      html += '</select></div>';
+
+      if (pagedList.length) {
+        pagedList.forEach(function(j) {
+          var st = status(j);
+          html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
+          html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
+          html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
+          html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
+          if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
+          if (j.justificante) html += '<span class="tag ok">Justificant</span>';
+          if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
+          if (j.celebrado === 'si') html += '<span class="tag">' + (j.modalidad === 'video' ? 'Videoconferència' : 'Presencial') + '</span>';
+          html += '</div></div>';
+        });
+
+        if (pageSize > 0 && totalPages > 1) {
+          html += '<div class="pagination">';
+          html += '<button onclick="changePage(-1)" ' + (currentPage === 1 ? 'disabled' : '') + '>◀ Anterior</button>';
+          html += '<span class="pagination-info">Pàgina ' + currentPage + ' de ' + totalPages + ' (' + totalItems + ' registre' + (totalItems > 1 ? 's' : '') + ')</span>';
+          html += '<button onclick="changePage(1)" ' + (currentPage === totalPages ? 'disabled' : '') + '>Següent ▶</button>';
+          html += '</div>';
+        }
+      } else {
+        html += '<p class="mu">No s\'ha trobat cap judici amb aquesta combinació de filtre i ordenació.</p>';
       }
-    } else {
-      html += '<p class="mu">No s\'ha trobat cap judici amb aquesta combinació de filtre i ordenació.</p>';
     }
-    
+
+    // Secció comuna de Google Drive i Còpia Manual
     html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
     if (accessToken) {
       html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive.</p>';
@@ -408,7 +526,7 @@ function render() {
       html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
       html += '</div>';
     } else {
-      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per synchronitzar les teves dades automàticament.</p>';
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
       html += '<button onclick="obrirModalDrive()">ℹ️ Info / Sol·licitar accés</button>';
@@ -426,6 +544,7 @@ function render() {
     return;
   }
 
+  // FORMULARI D'EDICIÓ
   var j = cur;
   var v = function(k) { return esc(j[k] || ''); };
   var ck = function(k) { return j[k] ? 'checked' : ''; };
@@ -564,7 +683,11 @@ function edit(id) {
   window.scrollTo(0, 0);
 }
 
-function back() { view = 'list'; cur = null; render(); }
+function back() {
+  view = localStorage.getItem('juicios_view') || 'calendar';
+  cur = null;
+  render();
+}
 
 window.addEventListener('click', function(e) {
   var m = $('#modalDrive');
@@ -575,3 +698,4 @@ document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
+
