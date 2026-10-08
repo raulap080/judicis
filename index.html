@@ -173,13 +173,17 @@ function setSort(v) {
 function setSearch(v) {
   searchQuery = v.trim().toLowerCase();
   currentPage = 1;
-  render();
+  updateListOnly();
 }
 
 function clearSearch() {
   searchQuery = '';
   currentPage = 1;
-  render();
+  var input = $('#searchInput');
+  if (input) input.value = '';
+  var clearBtn = $('#searchClearBtn');
+  if (clearBtn) clearBtn.style.display = 'none';
+  updateListOnly();
 }
 
 function init() {
@@ -354,12 +358,90 @@ function checkAndImportBackup(event) {
 
 function changePage(delta) {
   currentPage += delta;
-  render();
+  if (view === 'list') {
+    updateListOnly();
+  } else {
+    render();
+  }
 }
 
 function changeMonth(delta) {
   calDate.setMonth(calDate.getMonth() + delta);
   render();
+}
+
+function getFilteredList() {
+  var todayStr = new Date().toISOString().split('T')[0];
+  return items.filter(function(j) {
+    if (searchQuery) {
+      var haystack = [j.proc, j.expedient, j.atestado, j.juzgado, j.objecte, j.notas, j.denunciados, j.testigos, j.qualitat].map(function(s) { return (s || '').toLowerCase(); }).join(' ');
+      if (haystack.indexOf(searchQuery) === -1) return false;
+    }
+    if (sortBy === 'proximos') {
+      if (!j.fecha || j.fecha < todayStr) return false;
+    }
+    if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
+    if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
+    if (filter === 'cobro') return j.celebrado === 'si' && j.dad67 && !j.cobrado;
+    return true;
+  }).sort(function(a, b) {
+    if (sortBy === 'proximos' || sortBy === 'fecha_asc') return (a.fecha || '').localeCompare(b.fecha || '');
+    if (sortBy === 'fecha_desc') return (b.fecha || '').localeCompare(a.fecha || '');
+    if (sortBy === 'proc') return (a.proc || a.expedient || '').localeCompare(b.proc || b.expedient || '');
+    if (sortBy === 'juzgado') return (a.juzgado || '').localeCompare(b.juzgado || '');
+    if (sortBy === 'estado') return status(a)[0].localeCompare(status(b)[0]);
+    return 0;
+  });
+}
+
+function renderListHTML() {
+  var list = getFilteredList();
+  var totalItems = list.length;
+  var totalPages = pageSize === 0 ? 1 : Math.ceil(totalItems / pageSize) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  var startIdx = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
+  var endIdx = pageSize === 0 ? totalItems : Math.min(startIdx + pageSize, totalItems);
+  var pagedList = list.slice(startIdx, endIdx);
+
+  var html = '';
+  if (pagedList.length) {
+    pagedList.forEach(function(j) {
+      var st = status(j);
+      html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
+      html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
+      html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
+      html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
+      if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
+      if (j.justificante) html += '<span class="tag ok">Justificant</span>';
+      if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
+      if (j.celebrado === 'si') html += '<span class="tag">' + (j.modalidad === 'video' ? 'Videoconferència' : 'Presencial') + '</span>';
+      html += '</div></div>';
+    });
+
+    if (pageSize > 0 && totalPages > 1) {
+      html += '<div class="pagination">';
+      html += '<button onclick="changePage(-1)" ' + (currentPage === 1 ? 'disabled' : '') + '>◀ Anterior</button>';
+      html += '<span class="pagination-info">Pàgina ' + currentPage + ' de ' + totalPages + ' (' + totalItems + ' registre' + (totalItems > 1 ? 's' : '') + ')</span>';
+      html += '<button onclick="changePage(1)" ' + (currentPage === totalPages ? 'disabled' : '') + '>Següent ▶</button>';
+      html += '</div>';
+    }
+  } else {
+    html += '<p class="mu">No s\'ha trobat cap judici amb aquesta cerca o combinació de filtre.</p>';
+  }
+  return html;
+}
+
+function updateListOnly() {
+  var container = $('#listContainer');
+  if (container) {
+    container.innerHTML = renderListHTML();
+  }
+  var clearBtn = $('#searchClearBtn');
+  if (clearBtn) {
+    clearBtn.style.display = searchQuery ? 'block' : 'none';
+  }
 }
 
 function renderCalendar() {
@@ -443,47 +525,11 @@ function render() {
     if (view === 'calendar') {
       html += renderCalendar();
     } else {
-      var todayStr = new Date().toISOString().split('T')[0];
-
-      var list = items.filter(function(j) {
-        // Filtre per text de cerca
-        if (searchQuery) {
-          var haystack = [j.proc, j.expedient, j.atestado, j.juzgado, j.objecte, j.notas, j.denunciados, j.testigos, j.qualitat].map(function(s) { return (s || '').toLowerCase(); }).join(' ');
-          if (haystack.indexOf(searchQuery) === -1) return false;
-        }
-
-        if (sortBy === 'proximos') {
-          if (!j.fecha || j.fecha < todayStr) return false;
-        }
-        if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
-        if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
-        if (filter === 'cobro') return j.celebrado === 'si' && j.dad67 && !j.cobrado;
-        return true;
-      }).sort(function(a, b) {
-        if (sortBy === 'proximos' || sortBy === 'fecha_asc') return (a.fecha || '').localeCompare(b.fecha || '');
-        if (sortBy === 'fecha_desc') return (b.fecha || '').localeCompare(a.fecha || '');
-        if (sortBy === 'proc') return (a.proc || a.expedient || '').localeCompare(b.proc || b.expedient || '');
-        if (sortBy === 'juzgado') return (a.juzgado || '').localeCompare(b.juzgado || '');
-        if (sortBy === 'estado') return status(a)[0].localeCompare(status(b)[0]);
-        return 0;
-      });
-
-      var totalItems = list.length;
-      var totalPages = pageSize === 0 ? 1 : Math.ceil(totalItems / pageSize) || 1;
-      if (currentPage > totalPages) currentPage = totalPages;
-      if (currentPage < 1) currentPage = 1;
-
-      var startIdx = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
-      var endIdx = pageSize === 0 ? totalItems : Math.min(startIdx + pageSize, totalItems);
-      var pagedList = list.slice(startIdx, endIdx);
-
       // Caixa de cerca
       html += '<div class="search-box">';
       html += '<span class="search-icon">🔍</span>';
-      html += '<input type="text" placeholder="Cercar procediment, atestat, jutjat..." value="' + esc(searchQuery) + '" oninput="setSearch(this.value)">';
-      if (searchQuery) {
-        html += '<button class="search-clear" onclick="clearSearch()">&times;</button>';
-      }
+      html += '<input type="text" id="searchInput" placeholder="Cercar procediment, atestat, jutjat..." value="' + esc(searchQuery) + '" oninput="setSearch(this.value)">';
+      html += '<button id="searchClearBtn" class="search-clear" onclick="clearSearch()" style="' + (searchQuery ? 'display:block' : 'display:none') + '">&times;</button>';
       html += '</div>';
 
       html += '<div class="g2" style="margin-bottom:8px">';
@@ -514,30 +560,7 @@ function render() {
       html += '<option value="0"' + (pageSize === 0 ? ' selected' : '') + '>Tots</option>';
       html += '</select></div>';
 
-      if (pagedList.length) {
-        pagedList.forEach(function(j) {
-          var st = status(j);
-          html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
-          html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
-          html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
-          html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
-          if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
-          if (j.justificante) html += '<span class="tag ok">Justificant</span>';
-          if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
-          if (j.celebrado === 'si') html += '<span class="tag">' + (j.modalidad === 'video' ? 'Videoconferència' : 'Presencial') + '</span>';
-          html += '</div></div>';
-        });
-
-        if (pageSize > 0 && totalPages > 1) {
-          html += '<div class="pagination">';
-          html += '<button onclick="changePage(-1)" ' + (currentPage === 1 ? 'disabled' : '') + '>◀ Anterior</button>';
-          html += '<span class="pagination-info">Pàgina ' + currentPage + ' de ' + totalPages + ' (' + totalItems + ' registre' + (totalItems > 1 ? 's' : '') + ')</span>';
-          html += '<button onclick="changePage(1)" ' + (currentPage === totalPages ? 'disabled' : '') + '>Següent ▶</button>';
-          html += '</div>';
-        }
-      } else {
-        html += '<p class="mu">No s\'ha trobat cap judici amb aquesta cerca o combinació de filtre.</p>';
-      }
+      html += '<div id="listContainer">' + renderListHTML() + '</div>';
     }
 
     html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
@@ -575,7 +598,7 @@ function render() {
   var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="back()">Tancar</button></h1>';
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>';
   if (isNew) {
-    fHtml += '<label>Enganxar la citació (omple els camps automàticament)</label><textarea id="paste" placeholder="Enganxa aquí el text de la citació…"></textarea><div class="bar" style="margin-top:6px"><button onclick="parsePaste()">Omplir des del text</button></div>';
+    fHtml += '<label>Enganxar la citació o minuta (omple els camps automàticament)</label><textarea id="paste" placeholder="Enganxa aquí el text de la citació o de la minuta…"></textarea><div class="bar" style="margin-top:6px"><button onclick="parsePaste()">Omplir des del text</button></div>';
   }
   fHtml += '<label>Expedient</label><input id="expedient" value="' + v('expedient') + '">';
   fHtml += '<div class="g2"><div><label>Procediment</label><input id="proc" value="' + v('proc') + '"></div><div><label>Atestat</label><input id="atestado" value="' + v('atestado') + '"></div></div>';
@@ -599,8 +622,8 @@ function render() {
   fHtml += '<label>Modalitat real</label><select id="modalidad"><option value="presencial"' + (j.modalidad !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidad === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
   fHtml += '<div class="g2"><div><label>Hora d\'arribada</label><input type="time" id="llegada" value="' + v('llegada') + '"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '"></div></div>';
   fHtml += '<label>Minuta policial</label><textarea id="minuta">' + v('minuta') + '</textarea>';
-  fHtml += '<label>Persones denunciades</label><textarea id="denunciados">' + v('denunciados') + '</textarea>';
-  fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos">' + v('testigos') + '</textarea>';
+  fHtml += '<label>Persones denunciades</label><textarea id="denunciados" placeholder="Detinguts o investigats…">' + v('denunciados') + '</textarea>';
+  fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos" placeholder="Agents TIPs o testimonis…">' + v('testigos') + '</textarea>';
   fHtml += '<h2>Cobrament</h2>';
   fHtml += '<label class="chk"><input type="checkbox" id="justificante" ' + ck('justificante') + '> Tinc el justificant</label>';
   
@@ -699,6 +722,45 @@ function parsePaste() {
   st('proc', g(/Procediment:?\s*([^\n]+)/i));
   st('qualitat', g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
   st('objecte', g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
+
+  // --- EXTRACCIÓ D'AGENTS / TIPS ---
+  var tipsMatched = t.match(/TIP\s*(\d+)/gi);
+  if (tipsMatched) {
+    var tipsSet = [];
+    tipsMatched.forEach(function(item) {
+      var num = item.replace(/TIP\s*/i, '').trim();
+      if (tipsSet.indexOf('TIP ' + num) === -1) {
+        tipsSet.push('TIP ' + num);
+      }
+    });
+    if (tipsSet.length) {
+      cur.testigos = tipsSet.join('\n');
+    }
+  }
+
+  // --- EXTRACCIÓ DE PERSONES DETINGUDES / IMPLICADES ---
+  var detinguts = [];
+  
+  var matchesDet = t.matchAll(/-\s*([A-Za-zÀ-ÿ\s]+)\s+nascut[a]?\s+/gi);
+  for (var m of matchesDet) {
+    var nom = m[1].trim();
+    if (nom && detinguts.indexOf(nom) === -1) detinguts.push(nom);
+  }
+
+  var matchesSr = t.matchAll(/Sr\.\s+([A-Za-zÀ-ÿ\s]+)(?:amb|\,)/gi);
+  for (var m2 of matchesSr) {
+    var nomSr = m2[1].trim();
+    if (nomSr && nomSr.length > 2 && detinguts.indexOf(nomSr) === -1) detinguts.push(nomSr);
+  }
+
+  if (detinguts.length) {
+    cur.denunciados = detinguts.join('\n');
+  }
+
+  if (t.toUpperCase().indexOf('MINUTA POLICIAL') !== -1) {
+    cur.minuta = t;
+  }
+
   render();
 }
 
