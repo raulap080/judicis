@@ -35,6 +35,12 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .mu{color:var(--mu);font-size:13px}
 
+/* Cercador minimalista */
+.search-box{position:relative;margin-bottom:10px}
+.search-box input{padding-left:32px;padding-right:30px;border-radius:99px;font-size:14px}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--mu);pointer-events:none}
+.search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;padding:0;font-size:16px;color:var(--mu);cursor:pointer;line-height:1}
+
 /* Selector de Vistes */
 .view-switcher{display:flex;background:var(--bd);padding:3px;border-radius:99px;gap:2px}
 .view-btn{border:none;background:none;padding:6px 12px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;color:var(--mu)}
@@ -113,6 +119,7 @@ var cur = null;
 
 var filter = localStorage.getItem('juicios_filter') || 'todos';
 var sortBy = localStorage.getItem('juicios_sort') || 'proximos';
+var searchQuery = '';
 
 var calDate = new Date();
 var currentPage = 1;
@@ -159,6 +166,18 @@ function setFilter(v) {
 function setSort(v) {
   sortBy = v;
   localStorage.setItem('juicios_sort', v);
+  currentPage = 1;
+  render();
+}
+
+function setSearch(v) {
+  searchQuery = v.trim().toLowerCase();
+  currentPage = 1;
+  render();
+}
+
+function clearSearch() {
+  searchQuery = '';
   currentPage = 1;
   render();
 }
@@ -427,6 +446,12 @@ function render() {
       var todayStr = new Date().toISOString().split('T')[0];
 
       var list = items.filter(function(j) {
+        // Filtre per text de cerca
+        if (searchQuery) {
+          var haystack = [j.proc, j.expedient, j.atestado, j.juzgado, j.objecte, j.notas, j.denunciados, j.testigos, j.qualitat].map(function(s) { return (s || '').toLowerCase(); }).join(' ');
+          if (haystack.indexOf(searchQuery) === -1) return false;
+        }
+
         if (sortBy === 'proximos') {
           if (!j.fecha || j.fecha < todayStr) return false;
         }
@@ -451,6 +476,15 @@ function render() {
       var startIdx = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
       var endIdx = pageSize === 0 ? totalItems : Math.min(startIdx + pageSize, totalItems);
       var pagedList = list.slice(startIdx, endIdx);
+
+      // Caixa de cerca
+      html += '<div class="search-box">';
+      html += '<span class="search-icon">🔍</span>';
+      html += '<input type="text" placeholder="Cercar procediment, atestat, jutjat..." value="' + esc(searchQuery) + '" oninput="setSearch(this.value)">';
+      if (searchQuery) {
+        html += '<button class="search-clear" onclick="clearSearch()">&times;</button>';
+      }
+      html += '</div>';
 
       html += '<div class="g2" style="margin-bottom:8px">';
       html += '<div><label style="margin:0 0 2px 2px">Filtrar</label>';
@@ -502,7 +536,7 @@ function render() {
           html += '</div>';
         }
       } else {
-        html += '<p class="mu">No s\'ha trobat cap judici amb aquesta combinació de filtre i ordenació.</p>';
+        html += '<p class="mu">No s\'ha trobat cap judici amb aquesta cerca o combinació de filtre.</p>';
       }
     }
 
@@ -514,7 +548,7 @@ function render() {
       html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
       html += '</div>';
     } else {
-      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per synchronitzar les teves dades automàticament.</p>';
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
       html += '<button onclick="obrirModalDrive()">ℹ️ Info / Sol·licitar accés</button>';
