@@ -432,7 +432,6 @@ function render() {
         }
         if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
         if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
-        // PENDENTS DE COBRAMENT: Celebrats + DAD 67 presentada + No cobrats
         if (filter === 'cobro') return j.celebrado === 'si' && j.dad67 && !j.cobrado;
         return true;
       }).sort(function(a, b) {
@@ -515,7 +514,7 @@ function render() {
       html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
       html += '</div>';
     } else {
-      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per synchronitzar les teves dades automàticament.</p>';
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
       html += '<button onclick="obrirModalDrive()">ℹ️ Info / Sol·licitar accés</button>';
@@ -525,7 +524,7 @@ function render() {
     html += '<h2>Còpia local manual (JSON)</h2>';
     html += '<div class="bar" style="margin-top:8px">';
     html += '<button onclick="exportBackup()">📥 Exportar fitxer</button>';
-    html += '<label class="btn-label" style="margin:0;cursor:pointer">📤 Importar fitxer<input type="file" id="fileImport" accept=".json" style="position:absolute;opacity:0;width:1px;height:1px" onchange="checkAndImportBackup(event)"></label>';
+    html += '<label class="btn-label" style="margin:0;cursor:pointer">📤 Importar fitxer<input type="file" id="fileImport" accept=".json,application/json,text/json,text/plain" style="position:absolute;opacity:0;width:1px;height:1px" onchange="checkAndImportBackup(event)"></label>';
     html += '</div></div>';
 
     html += '<p class="mu">Les dades es desen localment al navegador.</p>';
@@ -571,7 +570,6 @@ function render() {
   fHtml += '<h2>Cobrament</h2>';
   fHtml += '<label class="chk"><input type="checkbox" id="justificante" ' + ck('justificante') + '> Tinc el justificant</label>';
   
-  // Només habilitat si s'ha celebrat
   fHtml += '<label class="chk' + (!isCelebrado ? ' disabled' : '') + '"><input type="checkbox" id="dad67" ' + ck('dad67') + ' ' + (!isCelebrado ? 'disabled' : '') + '> Sol·licitud DAD 67 presentada' + (!isCelebrado ? ' (cal marcar el judici com a celebrat)' : '') + '</label>';
   fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '" ' + (!isCelebrado ? 'disabled' : '') + '></div>';
   fHtml += '<label class="chk"><input type="checkbox" id="cobrado" ' + ck('cobrado') + '> Cobrat</label>';
