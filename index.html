@@ -387,13 +387,14 @@ function getShiftForDate(qKey, dateStr) {
     return (dayOfWeek < 5) ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
 
-  // Cicles 7x7
+  // Cicles 7x7 (Els blocs de 7 dies van de Dimarts a Dilluns)
   if (qKey === '7x7-A' || qKey === '7x7-B') {
-    var ref7 = new Date('2026-02-02T00:00:00'); // Dilluns 2 de febrer 2026
+    var ref7 = new Date('2026-02-03T00:00:00'); // Dimarts 3 de febrer 2026 (Inici primer bloc 7x7)
     var diffDays7 = Math.floor((target - ref7) / (86400000));
     var weekNum7 = Math.floor(diffDays7 / 7);
-    var isEvenWeek = (weekNum7 % 2 === 0);
-    var isTr = (qKey === '7x7-A') ? !isEvenWeek : isEvenWeek;
+    if (diffDays7 < 0) weekNum7 = Math.floor((diffDays7 + 1) / 7) - 1;
+    var isEvenWeek = (Math.abs(weekNum7) % 2 === 0);
+    var isTr = (qKey === '7x7-B') ? isEvenWeek : !isEvenWeek;
     return isTr ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
 
@@ -749,7 +750,7 @@ function render() {
       html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
       html += '</div>';
     } else {
-      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per synchronitzar les teves dades automàticament.</p>';
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
       html += '<button onclick="obrirModalDrive()">ℹ️ Info / Sol·licitar accés</button>';
@@ -775,7 +776,6 @@ function render() {
   var dayInfo = j.fecha ? getDayCobroInfo(j.fecha) : { isDouble: false };
   var shiftInfo = (j.fecha && selectedQuadrant) ? getShiftForDate(selectedQuadrant, j.fecha) : null;
 
-  // Comprovació exclusiva per a torns explícits de matí ('M' o 'MT')
   var isMorningShift = shiftInfo && (shiftInfo.shift === 'M' || shiftInfo.shift === 'MT');
   var canClaimCobro = !isMorningShift || j.pediFesta;
 
