@@ -376,7 +376,7 @@ function getDayCobroInfo(dateKey) {
   };
 }
 
-// --- LÒGICA DE CÀLCUL DE QUADRANTS POLICIALS 2026 ---
+// --- LÒGICA DE CÀLCUL DE QUADRANTS POLICIALS ---
 function getShiftForDate(qKey, dateStr) {
   if (!qKey || !dateStr) return null;
   var target = new Date(dateStr + 'T00:00:00');
@@ -387,23 +387,20 @@ function getShiftForDate(qKey, dateStr) {
     return (dayOfWeek < 5) ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
 
-  // Cicles 7x7 (Càlcul matemàtic exacte per dies transcorreguts)
+  // Cicles 7x7
   if (qKey === '7x7-A' || qKey === '7x7-B') {
-    // Data ancoratge 2026: Dilluns 5 de Gener de 2026 (Inici cicle 7 dies Treball per a Escamot B)
     var ref7 = new Date('2026-01-05T00:00:00');
     var diffDays = Math.round((target - ref7) / 86400000);
-    var cyclePos = ((diffDays % 14) + 14) % 14; // Posició dins el cicle de 14 dies (0..13)
-    
-    var isTr = (cyclePos < 7); // Dies 0..6 són Treball, 7..13 són Festa (per Escamot B)
-    if (qKey === '7x7-A') isTr = !isTr; // Invers per a l'Escamot A
-
+    var cyclePos = ((diffDays % 14) + 14) % 14;
+    var isTr = (cyclePos < 7);
+    if (qKey === '7x7-A') isTr = !isTr;
     return isTr ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
 
   // Cicles Q3
   if (qKey.startsWith('Q3-')) {
     var refQ3 = new Date('2026-02-02T00:00:00');
-    var diffQ3 = Math.floor((target - refQ3) / 86400000);
+    var diffQ3 = Math.round((target - refQ3) / 86400000);
     var weekQ3 = Math.floor(diffQ3 / 7) % 4;
     if (weekQ3 < 0) weekQ3 += 4;
     var isWeekend = (dayOfWeek >= 5);
@@ -420,12 +417,12 @@ function getShiftForDate(qKey, dateStr) {
     }
   }
 
-  // Cicles Q5T / Q5
+  // Cicles Q5T / Q5 (Corregit per a qualsevol any)
   if (qKey.startsWith('Q5T-') || qKey.startsWith('Q5-')) {
     var refQ5 = new Date('2026-02-02T00:00:00');
-    var diffQ5 = Math.floor((target - refQ5) / 86400000);
-    var weekQ5 = Math.floor(diffQ5 / 7) % 5;
-    if (weekQ5 < 0) weekQ5 += 5;
+    var diffDaysQ5 = Math.round((target - refQ5) / 86400000);
+    var weekQ5 = Math.floor(diffDaysQ5 / 7) % 5;
+    if (weekQ5 < 0) weekQ5 = (weekQ5 + 5) % 5;
 
     var escIdx = parseInt(qKey.replace(/[^0-9]/g, ''), 10) - 1;
     var shiftMatrix = [
