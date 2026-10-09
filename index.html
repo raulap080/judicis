@@ -382,12 +382,12 @@ function getShiftForDate(qKey, dateStr) {
   var target = new Date(dateStr + 'T00:00:00');
   var dayOfWeek = (target.getDay() + 6) % 7; // 0=Dl, 6=Dg
 
-  // Cicle 5 dies
+  // Cicle 5 dies (Dilluns a Divendres)
   if (qKey === '5d') {
     return (dayOfWeek < 5) ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
 
-  // Cicles 7x7
+  // Cicles 7x7 (7 dies treball, 7 dies festa)
   if (qKey === '7x7-A' || qKey === '7x7-B') {
     var ref7 = new Date('2026-01-05T00:00:00');
     var diffDays = Math.round((target - ref7) / 86400000);
@@ -397,50 +397,44 @@ function getShiftForDate(qKey, dateStr) {
     return isTr ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
 
-  // Cicles Q3
+  // Cicles Q3 (Seqüència de 3 setmanes: Festa -> Setmana Curta Dl-Dv -> Setmana Llarga Dl-Dg)
   if (qKey.startsWith('Q3-')) {
-    var refQ3 = new Date('2026-02-02T00:00:00');
-    var diffQ3 = Math.round((target - refQ3) / 86400000);
-    var weekQ3 = Math.floor(diffQ3 / 7) % 4;
-    if (weekQ3 < 0) weekQ3 += 4;
-    var isWeekend = (dayOfWeek >= 5);
+    var refQ3 = new Date('2026-01-05T00:00:00');
+    var diffDaysQ3 = Math.round((target - refQ3) / 86400000);
+    var weekNum3 = Math.floor(diffDaysQ3 / 7);
+    var cycleWeek3 = ((weekNum3 % 3) + 3) % 3;
 
-    var patternsQ3 = {
-      'Q3-Esc1': ['Tr', 'F', 'Tr', 'Tr'],
-      'Q3-Esc2': ['F', 'Tr', 'Tr', 'F'],
-      'Q3-Esc3': ['Tr', 'Tr', 'F', 'Tr']
-    };
-    var pat3 = patternsQ3[qKey];
-    if (pat3) {
-      var s3 = isWeekend ? 'F' : pat3[weekQ3];
-      return { shift: s3, type: (s3 === 'F' ? 'festa' : 'treball') };
+    var escNum3 = parseInt(qKey.replace(/[^0-9]/g, ''), 10) || 1;
+    var shiftedWeek3 = (cycleWeek3 + (escNum3 - 1)) % 3;
+
+    if (shiftedWeek3 === 0) {
+      return { shift: 'F', type: 'festa' };
+    } else if (shiftedWeek3 === 1) {
+      return (dayOfWeek < 5) ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
+    } else if (shiftedWeek3 === 2) {
+      return { shift: 'Tr', type: 'treball' };
     }
   }
 
-  // Cicles Q5T / Q5 (Corregit per a qualsevol any)
+  // Cicles Q5 / Q5T (Seqüència de 5 setmanes: Festa -> Tr Curta Dl-Dv -> Tr Llarga Dl-Dg -> Festa -> Matí Llarga M Dl-Dg)
   if (qKey.startsWith('Q5T-') || qKey.startsWith('Q5-')) {
-    var refQ5 = new Date('2026-02-02T00:00:00');
+    var refQ5 = new Date('2026-01-05T00:00:00');
     var diffDaysQ5 = Math.round((target - refQ5) / 86400000);
-    var weekQ5 = Math.floor(diffDaysQ5 / 7) % 5;
-    if (weekQ5 < 0) weekQ5 = (weekQ5 + 5) % 5;
+    var weekNum5 = Math.floor(diffDaysQ5 / 7);
+    var cycleWeek5 = ((weekNum5 % 5) + 5) % 5;
 
-    var escIdx = parseInt(qKey.replace(/[^0-9]/g, ''), 10) - 1;
-    var shiftMatrix = [
-      ['F', 'T', 'R', 'F', 'M'],
-      ['M', 'F', 'T', 'R', 'F'],
-      ['R', 'F', 'M', 'F', 'T'],
-      ['R', 'F', 'M', 'F', 'T'],
-      ['T', 'R', 'F', 'M', 'F']
-    ];
-    if (escIdx >= 0 && escIdx < shiftMatrix.length) {
-      var baseShift = shiftMatrix[escIdx][weekQ5];
-      var finalShift = baseShift;
-      if (baseShift === 'M' && dayOfWeek >= 5) finalShift = 'MT';
-      if (baseShift === 'T' && dayOfWeek >= 5) finalShift = 'TN';
-      if (baseShift === 'N' && dayOfWeek >= 5) finalShift = 'TN';
-      if (dayOfWeek >= 5 && (baseShift === 'F' || baseShift === 'R')) finalShift = 'F';
+    var escNum5 = parseInt(qKey.replace(/[^0-9]/g, ''), 10) || 1;
+    var shiftedWeek5 = (cycleWeek5 + (escNum5 - 1)) % 5;
 
-      return { shift: finalShift, type: (finalShift === 'F' ? 'festa' : 'treball') };
+    // 0 = Festa, 1 = Tr Curta (Dl-Dv), 2 = Tr Llarga (Dl-Dg), 3 = Festa, 4 = Matins Llarga (M Dl-Dg)
+    if (shiftedWeek5 === 0 || shiftedWeek5 === 3) {
+      return { shift: 'F', type: 'festa' };
+    } else if (shiftedWeek5 === 1) {
+      return (dayOfWeek < 5) ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
+    } else if (shiftedWeek5 === 2) {
+      return { shift: 'Tr', type: 'treball' };
+    } else if (shiftedWeek5 === 4) {
+      return { shift: 'M', type: 'treball' };
     }
   }
 
@@ -690,7 +684,7 @@ function render() {
     html += '<option value="Q3-Esc2"' + (selectedQuadrant === 'Q3-Esc2' ? ' selected' : '') + '>Q3 - Escamot 2</option>';
     html += '<option value="Q3-Esc3"' + (selectedQuadrant === 'Q3-Esc3' ? ' selected' : '') + '>Q3 - Escamot 3</option>';
     html += '</optgroup>';
-    html += '<optgroup label="Cicles Q5T / Q5">';
+    html += '<optgroup label="Cicles Q5 / Q5T">';
     html += '<option value="Q5T-Esc1"' + (selectedQuadrant === 'Q5T-Esc1' ? ' selected' : '') + '>Q5T - Escamot 1</option>';
     html += '<option value="Q5T-Esc2"' + (selectedQuadrant === 'Q5T-Esc2' ? ' selected' : '') + '>Q5T - Escamot 2</option>';
     html += '<option value="Q5T-Esc3"' + (selectedQuadrant === 'Q5T-Esc3' ? ' selected' : '') + '>Q5T - Escamot 3</option>';
