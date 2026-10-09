@@ -6,8 +6,8 @@
 <title>Registre de judicis</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%231f4e9c'/><path d='M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='130' r='30' fill='%2358c58a'/></svg>">
 <style>
-:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e;--double:#8e24aa}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f;--double:#ba68c8}}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e;--double:#8e24aa;--festa-bg:rgba(88,197,138,0.18);--festa-tx:#1b7a43;--treball-bg:rgba(31,78,156,0.12);--treball-tx:#1f4e9c}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f;--double:#ba68c8;--festa-bg:rgba(88,197,138,0.22);--festa-tx:#58c58a;--treball-bg:rgba(122,167,236,0.2);--treball-tx:#7aa7ec}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow-x:hidden}
 main{max-width:720px;margin:0 auto;padding:12px;width:100%}
@@ -46,6 +46,11 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .view-btn{border:none;background:none;padding:6px 12px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;color:var(--mu)}
 .view-btn.active{background:var(--card);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,0.1)}
 
+/* Selector de Quadrant */
+.quadrant-box{display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--card);padding:8px 12px;border-radius:12px;border:1px solid var(--bd)}
+.quadrant-box label{margin:0;font-weight:500;white-space:nowrap;font-size:13px;color:var(--tx)}
+.quadrant-box select{padding:5px 8px;font-size:13px;border-radius:6px}
+
 /* Calendari Adaptat */
 .cal-wrapper{width:100%;overflow-x:auto}
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
@@ -54,8 +59,14 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .cal-day-name{font-size:11px;font-weight:bold;color:var(--mu);padding:4px 0;text-align:center}
 .cal-day{background:var(--bg);border:1px solid var(--bd);border-radius:6px;min-height:64px;padding:3px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;font-size:11px;overflow:hidden}
 .cal-day.other-month{opacity:0.3;background:none}
-.cal-day.today{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac);background:var(--card)}
-.cal-day-num{font-weight:bold;margin-bottom:2px;font-size:11px;text-align:right;padding-right:2px;color:var(--mu)}
+.cal-day.today{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
+.cal-day.day-festa{background:var(--festa-bg);border-color:rgba(88,197,138,0.4)}
+.cal-day.day-treball{background:var(--treball-bg);border-color:rgba(31,78,156,0.3)}
+.cal-day-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;padding:0 2px}
+.cal-day-badge{font-size:9px;font-weight:bold;border-radius:3px;padding:0 3px}
+.cal-day.day-festa .cal-day-badge{color:var(--festa-tx);background:rgba(88,197,138,0.25)}
+.cal-day.day-treball .cal-day-badge{color:var(--treball-tx);background:rgba(31,78,156,0.2)}
+.cal-day-num{font-weight:bold;font-size:11px;color:var(--mu)}
 .cal-day.today .cal-day-num{color:var(--ac)}
 .cal-event{background:var(--ac);color:#fff;border-radius:3px;padding:2px 3px;font-size:9px;line-height:1.2;margin-bottom:2px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border:none;text-align:left}
 .cal-event.er{background:var(--er)}
@@ -74,6 +85,7 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .badge-test{display:inline-block;background:var(--wa);color:#fff;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:99px;margin-bottom:8px}
 .info-box{background:var(--bg);border-left:4px solid var(--ac);padding:12px;border-radius:6px;margin:14px 0}
 .info-box.double{border-left-color:var(--double);background:rgba(142,36,170,0.08)}
+.info-box.warning{border-left-color:var(--wa);background:rgba(229,166,74,0.12)}
 .btn-sol{display:inline-block;background:var(--ac);color:#fff;text-decoration:none;padding:10px 16px;border-radius:99px;font-weight:500;margin-top:8px;text-align:center}
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -117,6 +129,7 @@ var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleuserco
 var SCOPES = 'https://www.googleapis.com/auth/drive.file';
 var items = [];
 var view = localStorage.getItem('juicios_view') || 'calendar';
+var selectedQuadrant = localStorage.getItem('juicios_quadrant') || '';
 var cur = null;
 
 var filter = localStorage.getItem('juicios_filter') || 'todos';
@@ -155,6 +168,12 @@ function lsWrite() {
 function setMainView(v) {
   view = v;
   localStorage.setItem('juicios_view', v);
+  render();
+}
+
+function setQuadrant(q) {
+  selectedQuadrant = q;
+  localStorage.setItem('juicios_quadrant', q);
   render();
 }
 
@@ -333,7 +352,6 @@ function timeToMinutes(tStr) {
   return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
 }
 
-// Retorna l'estat de la jornada per a una data concreta
 function getDayCobroInfo(dateKey) {
   var dayEvents = items.filter(function(x) { return x.fecha === dateKey; });
   if (dayEvents.length < 2) return { isDouble: false, count: dayEvents.length, diffMin: 0 };
@@ -350,7 +368,7 @@ function getDayCobroInfo(dateKey) {
 
   var diff = (maxEnd > minStart) ? (maxEnd - minStart) : 0;
   return {
-    isDouble: diff > 180, // Més de 3 hores (180 minuts)
+    isDouble: diff > 180,
     count: dayEvents.length,
     diffMin: diff,
     minStart: minStart,
@@ -358,8 +376,79 @@ function getDayCobroInfo(dateKey) {
   };
 }
 
+// --- LÒGICA DE CÀLCUL DE QUADRANTS POLICIALS 2026 ---
+function getShiftForDate(qKey, dateStr) {
+  if (!qKey || !dateStr) return null;
+  var target = new Date(dateStr + 'T00:00:00');
+  var dayOfWeek = (target.getDay() + 6) % 7; // 0=Dl, 6=Dg
+
+  // Cicle 5 dies
+  if (qKey === '5d') {
+    return (dayOfWeek < 5) ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
+  }
+
+  // Cicles 7x7
+  if (qKey === '7x7-A' || qKey === '7x7-B') {
+    var ref7 = new Date('2026-02-02T00:00:00'); // Dilluns 2 de febrer 2026
+    var diffDays7 = Math.floor((target - ref7) / (86400000));
+    var weekNum7 = Math.floor(diffDays7 / 7);
+    var isEvenWeek = (weekNum7 % 2 === 0);
+    var isTr = (qKey === '7x7-A') ? !isEvenWeek : isEvenWeek;
+    return isTr ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
+  }
+
+  // Cicles Q3
+  if (qKey.startsWith('Q3-')) {
+    var refQ3 = new Date('2026-02-02T00:00:00');
+    var diffQ3 = Math.floor((target - refQ3) / 86400000);
+    var weekQ3 = Math.floor(diffQ3 / 7) % 4;
+    if (weekQ3 < 0) weekQ3 += 4;
+    var isWeekend = (dayOfWeek >= 5);
+
+    var patternsQ3 = {
+      'Q3-Esc1': ['Tr', 'F', 'Tr', 'Tr'],
+      'Q3-Esc2': ['F', 'Tr', 'Tr', 'F'],
+      'Q3-Esc3': ['Tr', 'Tr', 'F', 'Tr']
+    };
+    var pat3 = patternsQ3[qKey];
+    if (pat3) {
+      var s3 = isWeekend ? 'F' : pat3[weekQ3];
+      return { shift: s3, type: (s3 === 'F' ? 'festa' : 'treball') };
+    }
+  }
+
+  // Cicles Q5T / Q5
+  if (qKey.startsWith('Q5T-') || qKey.startsWith('Q5-')) {
+    var refQ5 = new Date('2026-02-02T00:00:00');
+    var diffQ5 = Math.floor((target - refQ5) / 86400000);
+    var weekQ5 = Math.floor(diffQ5 / 7) % 5;
+    if (weekQ5 < 0) weekQ5 += 5;
+
+    var escIdx = parseInt(qKey.replace(/[^0-9]/g, ''), 10) - 1;
+    var shiftMatrix = [
+      ['F', 'T', 'R', 'F', 'M'],
+      ['M', 'F', 'T', 'R', 'F'],
+      ['R', 'F', 'M', 'F', 'T'],
+      ['R', 'F', 'M', 'F', 'T'],
+      ['T', 'R', 'F', 'M', 'F']
+    ];
+    if (escIdx >= 0 && escIdx < shiftMatrix.length) {
+      var baseShift = shiftMatrix[escIdx][weekQ5];
+      var finalShift = baseShift;
+      if (baseShift === 'M' && dayOfWeek >= 5) finalShift = 'MT';
+      if (baseShift === 'T' && dayOfWeek >= 5) finalShift = 'TN';
+      if (baseShift === 'N' && dayOfWeek >= 5) finalShift = 'TN';
+      if (dayOfWeek >= 5 && (baseShift === 'F' || baseShift === 'R')) finalShift = 'F';
+
+      return { shift: finalShift, type: (finalShift === 'F' ? 'festa' : 'treball') };
+    }
+  }
+
+  return null;
+}
+
 function exportBackup() {
-  var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items };
+  var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items, quadrant: selectedQuadrant };
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
   var downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
@@ -379,6 +468,10 @@ function checkAndImportBackup(event) {
       var importedItems = Array.isArray(raw) ? raw : (raw.data || []);
       if (confirm('Vols restaurar les dades d\'aquest fitxer local?')) {
         items = importedItems;
+        if (raw.quadrant !== undefined) {
+          selectedQuadrant = raw.quadrant;
+          localStorage.setItem('juicios_quadrant', selectedQuadrant);
+        }
         lsWrite();
         render();
         alert('Dades actualitzades correctament!');
@@ -444,12 +537,16 @@ function renderListHTML() {
     pagedList.forEach(function(j) {
       var st = status(j);
       var dayInfo = j.fecha ? getDayCobroInfo(j.fecha) : { isDouble: false };
+      var shiftInfo = (j.fecha && selectedQuadrant) ? getShiftForDate(selectedQuadrant, j.fecha) : null;
       
       html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
       html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
       html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
       html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
       if (dayInfo.isDouble) html += '<span class="tag double-tag">⚡ 2n Cobrament (>3h)</span>';
+      if (shiftInfo) {
+        html += '<span class="tag" style="' + (shiftInfo.type === 'festa' ? 'color:var(--festa-tx);border-color:var(--festa-tx)' : 'color:var(--treball-tx);border-color:var(--treball-tx)') + '">Torn: ' + shiftInfo.shift + '</span>';
+      }
       if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
       if (j.justificante) html += '<span class="tag ok">Justificant</span>';
       if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
@@ -521,13 +618,27 @@ function renderCalendar() {
 
     var dayEvents = items.filter(function(j) { return j.fecha === dateKey; });
     var dayInfo = getDayCobroInfo(dateKey);
+    var shiftInfo = selectedQuadrant ? getShiftForDate(selectedQuadrant, dateKey) : null;
 
-    html += '<div class="cal-day' + (isToday ? ' today' : '') + '">';
+    var dayClasses = 'cal-day' + (isToday ? ' today' : '');
+    if (shiftInfo) {
+      if (shiftInfo.type === 'festa') dayClasses += ' day-festa';
+      else if (shiftInfo.type === 'treball') dayClasses += ' day-treball';
+    }
+
+    html += '<div class="' + dayClasses + '">';
+    html += '<div class="cal-day-header">';
+    if (shiftInfo) {
+      html += '<span class="cal-day-badge">' + shiftInfo.shift + '</span>';
+    } else {
+      html += '<span></span>';
+    }
     html += '<span class="cal-day-num">' + day + '</span>';
+    html += '</div>';
 
     dayEvents.forEach(function(j, idx) {
       var st = status(j);
-      var isSecondCobro = (dayInfo.isDouble && idx > 0); // El segon judici o posteriors del mateix dia (>3h)
+      var isSecondCobro = (dayInfo.isDouble && idx > 0);
       var extraClass = isSecondCobro ? ' double-cobro' : (' ' + st[1]);
       var label = (j.hora ? j.hora + ' ' : '') + (j.proc || j.objecte || 'Judici') + (isSecondCobro ? ' (2n cobram.)' : '');
       
@@ -561,6 +672,32 @@ function render() {
     html += '<button class="view-btn' + (view === 'calendar' ? ' active' : '') + '" onclick="setMainView(\'calendar\')">📅 Calendari</button>';
     html += '<button class="view-btn' + (view === 'list' ? ' active' : '') + '" onclick="setMainView(\'list\')">📋 Llista</button>';
     html += '</div>';
+    html += '</div>';
+
+    // Desplegable de Quadrant Policial
+    html += '<div class="quadrant-box">';
+    html += '<span>🛡️</span>';
+    html += '<label for="quadrantSelect">Quadrant laboral:</label>';
+    html += '<select id="quadrantSelect" onchange="setQuadrant(this.value)">';
+    html += '<option value=""' + (!selectedQuadrant ? ' selected' : '') + '>Sense quadrant (cap)</option>';
+    html += '<optgroup label="Cicles General / 7x7">';
+    html += '<option value="5d"' + (selectedQuadrant === '5d' ? ' selected' : '') + '>5 dies (Dilluns a Divendres)</option>';
+    html += '<option value="7x7-A"' + (selectedQuadrant === '7x7-A' ? ' selected' : '') + '>7x7 - Escamot A</option>';
+    html += '<option value="7x7-B"' + (selectedQuadrant === '7x7-B' ? ' selected' : '') + '>7x7 - Escamot B</option>';
+    html += '</optgroup>';
+    html += '<optgroup label="Cicles Q3">';
+    html += '<option value="Q3-Esc1"' + (selectedQuadrant === 'Q3-Esc1' ? ' selected' : '') + '>Q3 - Escamot 1</option>';
+    html += '<option value="Q3-Esc2"' + (selectedQuadrant === 'Q3-Esc2' ? ' selected' : '') + '>Q3 - Escamot 2</option>';
+    html += '<option value="Q3-Esc3"' + (selectedQuadrant === 'Q3-Esc3' ? ' selected' : '') + '>Q3 - Escamot 3</option>';
+    html += '</optgroup>';
+    html += '<optgroup label="Cicles Q5T / Q5">';
+    html += '<option value="Q5T-Esc1"' + (selectedQuadrant === 'Q5T-Esc1' ? ' selected' : '') + '>Q5T - Escamot 1</option>';
+    html += '<option value="Q5T-Esc2"' + (selectedQuadrant === 'Q5T-Esc2' ? ' selected' : '') + '>Q5T - Escamot 2</option>';
+    html += '<option value="Q5T-Esc3"' + (selectedQuadrant === 'Q5T-Esc3' ? ' selected' : '') + '>Q5T - Escamot 3</option>';
+    html += '<option value="Q5T-Esc4"' + (selectedQuadrant === 'Q5T-Esc4' ? ' selected' : '') + '>Q5T - Escamot 4</option>';
+    html += '<option value="Q5T-Esc5"' + (selectedQuadrant === 'Q5T-Esc5' ? ' selected' : '') + '>Q5T - Escamot 5</option>';
+    html += '</optgroup>';
+    html += '</select>';
     html += '</div>';
 
     if (view === 'calendar') {
@@ -636,6 +773,11 @@ function render() {
   var isNew = !items.some(function(x) { return x.id === j.id; });
   var isCelebrado = (j.celebrado === 'si');
   var dayInfo = j.fecha ? getDayCobroInfo(j.fecha) : { isDouble: false };
+  var shiftInfo = (j.fecha && selectedQuadrant) ? getShiftForDate(selectedQuadrant, j.fecha) : null;
+
+  // Comprovació exclusiva per a torns explícits de matí ('M' o 'MT')
+  var isMorningShift = shiftInfo && (shiftInfo.shift === 'M' || shiftInfo.shift === 'MT');
+  var canClaimCobro = !isMorningShift || j.pediFesta;
 
   var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="back()">Tancar</button></h1>';
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>';
@@ -650,6 +792,13 @@ function render() {
   fHtml += '<div class="g2"><div><label>Qualitat de la compareixença</label><input id="qualitat" value="' + v('qualitat') + '"></div><div><label>Sala</label><input id="sala" value="' + v('sala') + '"></div></div>';
   fHtml += '<label>Objecte de la compareixença</label><input id="objecte" value="' + v('objecte') + '">';
   fHtml += '<div class="g2"><div><label>Data</label><input type="date" id="fecha" value="' + v('fecha') + '"></div><div><label>Hora</label><input type="time" id="hora" value="' + v('hora') + '"></div></div>';
+
+  if (shiftInfo) {
+    fHtml += '<div class="info-box" style="margin:8px 0;padding:8px 12px;border-left-color:' + (shiftInfo.type === 'festa' ? 'var(--ok)' : 'var(--ac)') + '">';
+    fHtml += '<b style="font-size:13px">🛡️ Torn segons quadrant (' + selectedQuadrant + '): ' + shiftInfo.shift + ' (' + (shiftInfo.type === 'festa' ? 'Festa' : 'Servei / Treball') + ')</b>';
+    fHtml += '</div>';
+  }
+
   fHtml += '<label>Modalitat prevista</label><select id="modalidadPrev"><option value="presencial"' + (j.modalidadPrev !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidadPrev === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
   fHtml += '<label>Notes</label><textarea id="notas">' + v('notas') + '</textarea>';
   fHtml += '<div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="' + calUrl(j) + '">📅 Afegir a Google Calendar</a></div>';
@@ -671,17 +820,23 @@ function render() {
   fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos" placeholder="Agents TIPs o testimonis…">' + v('testigos') + '</textarea>';
   fHtml += '<h2>Cobrament</h2>';
 
-  if (dayInfo.isDouble) {
+  if (isMorningShift && !j.pediFesta) {
+    fHtml += '<div class="info-box warning" style="margin:10px 0">';
+    fHtml += '<b style="color:var(--wa);font-size:14px;display:block">⚠️ Coincidència amb torn de matí (' + shiftInfo.shift + ')</b>';
+    fHtml += '<p class="mu" style="margin:4px 0 0;font-size:12px">El judici cau en un dia que tens torn de matí (' + shiftInfo.shift + '). No genera indemnització a menys que hagis permutat el torn o hagis demanat un dia de festa.</p>';
+    fHtml += '</div>';
+  } else if (dayInfo.isDouble) {
     fHtml += '<div class="info-box double" style="margin:10px 0">';
     fHtml += '<b style="color:var(--double);font-size:14px;display:block">⚡ Aquesta jornada supera les 3 hores entre judicis!</b>';
     fHtml += '<p class="mu" style="margin:4px 0 0;font-size:12px">Aquest dia hi ha ' + dayInfo.count + ' judicis registrats amb un temps transcorregut superior a 3h. Tens dret a <b>2 cobraments / assistències</b> per aquesta jornada.</p>';
     fHtml += '</div>';
   }
 
+  fHtml += '<label class="chk"><input type="checkbox" id="pediFesta" ' + ck('pediFesta') + ' onchange="render()"> He demanat festa / permuta per a aquest dia</label>';
   fHtml += '<label class="chk"><input type="checkbox" id="justificante" ' + ck('justificante') + '> Tinc el justificant</label>';
   
-  fHtml += '<label class="chk' + (!isCelebrado ? ' disabled' : '') + '"><input type="checkbox" id="dad67" ' + ck('dad67') + ' ' + (!isCelebrado ? 'disabled' : '') + '> Sol·licitud DAD 67 presentada' + (!isCelebrado ? ' (cal marcar el judici com a celebrat)' : '') + '</label>';
-  fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '" ' + (!isCelebrado ? 'disabled' : '') + '></div>';
+  fHtml += '<label class="chk' + (!isCelebrado || !canClaimCobro ? ' disabled' : '') + '"><input type="checkbox" id="dad67" ' + ck('dad67') + ' ' + (!isCelebrado || !canClaimCobro ? 'disabled' : '') + '> Sol·licitud DAD 67 presentada' + (!isCelebrado ? ' (cal marcar el judici com a celebrat)' : (!canClaimCobro ? ' (coincideix amb matí ordinari)' : '')) + '</label>';
+  fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '" ' + (!isCelebrado || !canClaimCobro ? 'disabled' : '') + '></div>';
   fHtml += '<label class="chk"><input type="checkbox" id="cobrado" ' + ck('cobrado') + '> Cobrat</label>';
   fHtml += '<div><label>Data de cobrament</label><input type="date" id="cobradoFecha" value="' + v('cobradoFecha') + '"></div></div>';
   
@@ -714,7 +869,7 @@ function onCelebradoChange(val) {
 }
 
 var F = ['expedient','proc','atestado','juzgado','adreca','fax','telefon','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'];
-var C = ['justificante','dad67','cobrado'];
+var C = ['justificante','dad67','cobrado','pediFesta'];
 
 function collect() {
   F.forEach(function(k) { if ($('#'+k)) cur[k] = $('#'+k).value; });
