@@ -429,7 +429,7 @@ async function syncDriveAuto(manual) {
         : 'Hi ha una còpia a Google Drive (' + remoteDate.toLocaleString('ca-ES') + ').\n\nVols restaurar-la en aquest dispositiu?';
       if (confirm(msg)) {
         items = imported;
-        if (raw.quadrant === '' || raw.quadrant === '7x7-A' || raw.quadrant === '7x7-B') {
+        if (isValidQuadrant(raw.quadrant)) {
           selectedQuadrant = raw.quadrant;
           localStorage.setItem('juicios_quadrant', selectedQuadrant);
         }
@@ -539,7 +539,14 @@ function getDayCobroInfo(dateKey) {
   return { isDouble: diff > 180, count: dayEvents.length, diffMin: diff, minStart: minStart, maxEnd: maxEnd };
 }
 
-// --- LÒGICA NOMÉS PER AL 7X7 ---
+// Tipus de setmana: F = festa, C = curta (dl-dv), L = llarga (dl-dg); 2n valor = lletra del torn.
+// base = posició de cada escamot dins del cicle a REF_DATE (2 de febrer de 2026).
+var WEEK_CYCLES = {
+  'Q3': { weeks: [['F'], ['C', 'T'], ['L', 'Tr']], base: { '1': 2, '2': 0, '3': 1 } },
+  'Q5': { weeks: [['F'], ['C', 'T'], ['L', 'N'], ['F'], ['L', 'M']], base: { '1': 0, '2': 4, '3': 3, '4': 2, '5': 1 } }
+};
+
+// --- QUADRANTS ---
 function dayNumber(s) {
   var p = String(s).split('-');
   return Math.round(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])) / 86400000);
@@ -554,7 +561,29 @@ function getShiftForDate(qKey, dateStr) {
     if (qKey === '7x7-A') isTr = !isTr;
     return isTr ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
+  // Cicles setmanals (dilluns-diumenge): Q3 i Q5
+  var parts = String(qKey).split('-');
+  var cyc = WEEK_CYCLES[parts[0]];
+  if (cyc && cyc.base[parts[1]] !== undefined) {
+    var dn = dayNumber(dateStr) - dayNumber(REF_DATE); // REF_DATE és dilluns
+    var wk = Math.floor(dn / 7);
+    var dow = ((dn % 7) + 7) % 7; // 0 = dilluns ... 6 = diumenge
+    var n = cyc.weeks.length;
+    var w = cyc.weeks[(((wk + cyc.base[parts[1]]) % n) + n) % n];
+    if (w[0] === 'L') return { shift: w[1], type: 'treball' };            // llarga: dl-dg
+    if (w[0] === 'C' && dow < 5) return { shift: w[1], type: 'treball' }; // curta: dl-dv
+    return { shift: 'F', type: 'festa' };
+  }
+  // Dilluns a divendres treball, cap de setmana festa
+  if (qKey === 'LV') {
+    var dow2 = (((dayNumber(dateStr) - dayNumber(REF_DATE)) % 7) + 7) % 7;
+    return dow2 < 5 ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
+  }
   return null;
+}
+
+function isValidQuadrant(q) {
+  return ['', '7x7-A', '7x7-B', 'Q3-1', 'Q3-2', 'Q3-3', 'Q5-1', 'Q5-2', 'Q5-3', 'Q5-4', 'Q5-5', 'LV'].indexOf(q) !== -1;
 }
 
 // ---------- Còpia local manual ----------
@@ -599,7 +628,7 @@ function checkAndImportBackup(event) {
       var imported = sanitizeItems(Array.isArray(raw) ? raw : (raw.data || []));
       if (!confirm('Vols restaurar les dades d\'aquest fitxer local? Se substituiran les dades actuals.')) return;
       items = imported;
-      if (raw.quadrant === '' || raw.quadrant === '7x7-A' || raw.quadrant === '7x7-B') {
+      if (isValidQuadrant(raw.quadrant)) {
         selectedQuadrant = raw.quadrant;
         localStorage.setItem('juicios_quadrant', selectedQuadrant);
       }
@@ -817,6 +846,15 @@ function render() {
     html += '<option value=""' + (!selectedQuadrant ? ' selected' : '') + '>Sense quadrant (cap)</option>';
     html += '<option value="7x7-A"' + (selectedQuadrant === '7x7-A' ? ' selected' : '') + '>7x7 - Escamot A</option>';
     html += '<option value="7x7-B"' + (selectedQuadrant === '7x7-B' ? ' selected' : '') + '>7x7 - Escamot B</option>';
+    html += '<option value="Q3-1"' + (selectedQuadrant === 'Q3-1' ? ' selected' : '') + '>Q3 - Esc. 1</option>';
+    html += '<option value="Q3-2"' + (selectedQuadrant === 'Q3-2' ? ' selected' : '') + '>Q3 - Esc. 2</option>';
+    html += '<option value="Q3-3"' + (selectedQuadrant === 'Q3-3' ? ' selected' : '') + '>Q3 - Esc. 3</option>';
+    html += '<option value="Q5-1"' + (selectedQuadrant === 'Q5-1' ? ' selected' : '') + '>Q5 - Esc. 1</option>';
+    html += '<option value="Q5-2"' + (selectedQuadrant === 'Q5-2' ? ' selected' : '') + '>Q5 - Esc. 2</option>';
+    html += '<option value="Q5-3"' + (selectedQuadrant === 'Q5-3' ? ' selected' : '') + '>Q5 - Esc. 3</option>';
+    html += '<option value="Q5-4"' + (selectedQuadrant === 'Q5-4' ? ' selected' : '') + '>Q5 - Esc. 4</option>';
+    html += '<option value="Q5-5"' + (selectedQuadrant === 'Q5-5' ? ' selected' : '') + '>Q5 - Esc. 5</option>';
+    html += '<option value="LV"' + (selectedQuadrant === 'LV' ? ' selected' : '') + '>Dilluns a divendres (festa cap de setmana)</option>';
     html += '</select>';
     html += '</div>';
 
