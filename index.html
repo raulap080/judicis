@@ -87,6 +87,9 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .info-box.double{border-left-color:var(--double);background:rgba(142,36,170,0.08)}
 .info-box.warning{border-left-color:var(--wa);background:rgba(229,166,74,0.12)}
 .btn-sol{display:inline-block;background:var(--ac);color:#fff;text-decoration:none;padding:10px 16px;border-radius:99px;font-weight:500;margin-top:8px;text-align:center}
+
+/* Avís discret */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1b2430;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;z-index:1000;display:none;max-width:90%;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -100,7 +103,7 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
     <span class="badge-test">Fase de proves (Testing)</span>
     <h3 style="margin:4px 0 10px;font-size:18px">☁️ Còpies de seguretat a Google Drive</h3>
     <p class="mu" style="font-size:14px;line-height:1.5">
-      La sincronització automàtica amb Google Drive es troba en fase de proves reduïda. 
+      La sincronització automàtica amb Google Drive es troba en fase de proves reduïda.
       Per poder utilitzar aquesta funció, cal que el teu compte de Google estigui donat d'alta com a usuari autoritzat.
     </p>
 
@@ -123,12 +126,16 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 </div>
 
 <script>
-function initGoogleAuth() {}
-
 var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com';
 var SCOPES = 'https://www.googleapis.com/auth/drive.file';
+var DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
+var UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files';
+var BACKUP_NAME = 'judicis_backup.json';
+var REF_DATE = '2026-02-02'; // Dilluns de referència del 7x7
+
 var items = [];
 var view = localStorage.getItem('juicios_view') || 'calendar';
+if (view !== 'calendar' && view !== 'list') view = 'calendar';
 var selectedQuadrant = localStorage.getItem('juicios_quadrant') || '';
 var cur = null;
 
@@ -140,13 +147,23 @@ var calDate = new Date();
 var currentPage = 1;
 var pageSize = 10;
 var tokenClient = null;
-var accessToken = localStorage.getItem('gdrive_token') || null;
+var accessToken = null;
+var tokenExp = 0;
+
+// El token de Drive només viu a la sessió de la pestanya i amb caducitat
+(function() {
+  try {
+    var t = JSON.parse(sessionStorage.getItem('gdrive_tok') || 'null');
+    if (t && t.exp > Date.now()) { accessToken = t.v; tokenExp = t.exp; }
+    localStorage.removeItem('gdrive_token'); // neteja de la versió antiga
+  } catch (e) {}
+})();
 
 function $(s) { return document.querySelector(s); }
 
 function esc(s) {
   if (s === null || s === undefined) return '';
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function fmt(d) {
@@ -154,17 +171,135 @@ function fmt(d) {
   return new Date(d + 'T00:00').toLocaleDateString('ca-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// Data local en format YYYY-MM-DD (no UTC)
+function localDateStr(dt) {
+  dt = dt || new Date();
+  return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+}
+
+function toast(msg) {
+  var t = $('#toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._h);
+  t._h = setTimeout(function() { t.style.display = 'none'; }, 3800);
+}
+
+// ---------- Dades i neteja ----------
+function cleanFile(f) {
+  if (!f || typeof f !== 'object') return null;
+  var name = String(f.name || 'fitxer');
+  if (f.link) {
+    var u = String(f.url || '');
+    return /^https?:\/\//i.test(u) ? { name: name, url: u, link: true } : null;
+  }
+  var o = { name: name, link: false, type: String(f.type || '') };
+  if (f.id) o.id = String(f.id).replace(/[^a-zA-Z0-9_-]/g, '');
+  if (typeof f.url === 'string' && f.url.indexOf('data:') === 0) o.url = f.url; // format antic, es migra a IndexedDB
+  return o;
+}
+
+function sanitizeItems(arr) {
+  if (!Array.isArray(arr)) return [];
+  var seen = {};
+  var out = [];
+  arr.forEach(function(x) {
+    if (!x || typeof x !== 'object') return;
+    var o = Object.assign({}, x);
+    var id = String(o.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!id || seen[id]) id = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    seen[id] = 1;
+    o.id = id;
+    o.files = (Array.isArray(o.files) ? o.files : []).map(cleanFile).filter(Boolean);
+    out.push(o);
+  });
+  return out;
+}
+
 function lsRead() {
   try { return JSON.parse(localStorage.getItem('juicios') || '[]'); } catch (e) { return []; }
 }
 
 function lsWrite() {
-  try { 
+  try {
     localStorage.setItem('juicios', JSON.stringify(items));
     localStorage.setItem('juicios_updated', new Date().toISOString());
-  } catch (e) {}
+    return true;
+  } catch (e) {
+    alert('⚠️ No s\'han pogut desar les dades (emmagatzematge ple?). Fes ara una còpia amb «Exportar fitxer».');
+    return false;
+  }
 }
 
+// ---------- Adjunts a IndexedDB ----------
+var dbp = null;
+function dbOpen() {
+  if (dbp) return dbp;
+  dbp = new Promise(function(res, rej) {
+    if (!window.indexedDB) { rej(new Error('IndexedDB no disponible')); return; }
+    var r = indexedDB.open('judicis_db', 1);
+    r.onupgradeneeded = function() { r.result.createObjectStore('files', { keyPath: 'id' }); };
+    r.onsuccess = function() { res(r.result); };
+    r.onerror = function() { rej(r.error); };
+  });
+  return dbp;
+}
+function dbTx(mode, fn) {
+  return dbOpen().then(function(db) {
+    return new Promise(function(res, rej) {
+      var tx = db.transaction('files', mode);
+      var rq = fn(tx.objectStore('files'));
+      tx.oncomplete = function() { res(rq ? rq.result : undefined); };
+      tx.onerror = function() { rej(tx.error); };
+      tx.onabort = function() { rej(tx.error); };
+    });
+  });
+}
+function dbPut(id, blob) { return dbTx('readwrite', function(s) { return s.put({ id: id, blob: blob }); }); }
+function dbGet(id) { return dbTx('readonly', function(s) { return s.get(id); }).then(function(r) { return r ? r.blob : null; }); }
+function dbDel(id) { return dbTx('readwrite', function(s) { return s.delete(id); }); }
+
+function newFileId() { return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function blobToDataURL(b) {
+  return new Promise(function(res, rej) {
+    var r = new FileReader();
+    r.onload = function() { res(r.result); };
+    r.onerror = function() { rej(r.error); };
+    r.readAsDataURL(b);
+  });
+}
+
+// Migra adjunts antics (base64 dins de localStorage) a IndexedDB
+async function migrateFiles() {
+  var changed = false;
+  for (var i = 0; i < items.length; i++) {
+    var fl = items[i].files || [];
+    for (var k = 0; k < fl.length; k++) {
+      var f = fl[k];
+      if (!f.link && typeof f.url === 'string' && f.url.indexOf('data:') === 0) {
+        try {
+          var b = await (await fetch(f.url)).blob();
+          var id = f.id || newFileId();
+          await dbPut(id, b);
+          f.id = id;
+          f.type = b.type || f.type || '';
+          delete f.url;
+          changed = true;
+        } catch (e) {}
+      }
+    }
+  }
+  if (changed) lsWrite();
+}
+
+// ---------- Estat i navegació ----------
 function setMainView(v) {
   view = v;
   localStorage.setItem('juicios_view', v);
@@ -208,16 +343,28 @@ function clearSearch() {
 }
 
 function init() {
-  items = lsRead();
+  items = sanitizeItems(lsRead());
   render();
+  migrateFiles().then(function() {
+    if (view === 'calendar' || view === 'list') render();
+  });
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 }
 
-function obrirModalDrive() {
-  $('#modalDrive').style.display = 'flex';
+function obrirModalDrive() { $('#modalDrive').style.display = 'flex'; }
+function tancarModalDrive() { $('#modalDrive').style.display = 'none'; }
+
+// ---------- Google Drive ----------
+function dToken() {
+  if (accessToken && tokenExp && Date.now() > tokenExp) dropToken(false);
+  return accessToken;
 }
 
-function tancarModalDrive() {
-  $('#modalDrive').style.display = 'none';
+function dropToken(rerender) {
+  accessToken = null;
+  tokenExp = 0;
+  try { sessionStorage.removeItem('gdrive_tok'); } catch (e) {}
+  if (rerender !== false && (view === 'calendar' || view === 'list')) render();
 }
 
 function connectDrive() {
@@ -232,9 +379,12 @@ function connectDrive() {
       callback: function(res) {
         if (res.access_token) {
           accessToken = res.access_token;
-          localStorage.setItem('gdrive_token', accessToken);
+          tokenExp = Date.now() + Math.max(60, (Number(res.expires_in) || 3600) - 60) * 1000;
+          try { sessionStorage.setItem('gdrive_tok', JSON.stringify({ v: accessToken, exp: tokenExp })); } catch (e) {}
           render();
-          syncDriveAuto();
+          syncDriveAuto(false);
+        } else if (res.error) {
+          toast('No s\'ha pogut connectar amb Google.');
         }
       }
     });
@@ -242,80 +392,91 @@ function connectDrive() {
   tokenClient.requestAccessToken();
 }
 
-function syncDriveAuto() {
-  if (!accessToken) return;
-  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27judicis_backup.json%27%20and%20trashed%3Dfalse', {
-    headers: { 'Authorization': 'Bearer ' + accessToken }
-  })
-  .then(function(res) { return res.json(); })
-  .then(function(data) {
-    if (data.files && data.files.length > 0) {
-      var fileId = data.files[0].id;
-      fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
-        headers: { 'Authorization': 'Bearer ' + accessToken }
-      })
-      .then(function(res) { return res.json(); })
-      .then(function(raw) {
-        var importedItems = Array.isArray(raw) ? raw : (raw.data || []);
-        var remoteDate = raw.updatedAt ? new Date(raw.updatedAt) : null;
-        var localDateStr = localStorage.getItem('juicios_updated');
-        var localDate = localDateStr ? new Date(localDateStr) : null;
-
-        if (remoteDate && localDate && remoteDate > localDate) {
-          if (confirm('S\'han trobat dades MÉS RECENTS a Google Drive (' + remoteDate.toLocaleString('ca-ES') + ').\n\nVols actualitzar les teves dades locals?')) {
-            items = importedItems;
-            lsWrite();
-            render();
-            alert('Sincronitzat amb èxit des de Google Drive!');
-          }
-        }
-      });
-    }
-  })
-  .catch(function(err) {
-    console.log('Error amb Drive:', err);
-  });
+async function driveFetch(url, opts) {
+  if (!dToken()) throw new Error('Cal connectar Google Drive.');
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers, { 'Authorization': 'Bearer ' + accessToken });
+  var r = await fetch(url, opts);
+  if (r.status === 401) {
+    dropToken();
+    throw new Error('La sessió de Google ha caducat. Torna a connectar.');
+  }
+  if (!r.ok) throw new Error('Error de Drive (' + r.status + ')');
+  return r;
 }
 
-function saveToDrive() {
-  if (!accessToken) {
-    alert('Connecta primer el teu compte de Google Drive.');
+async function findBackup() {
+  var url = DRIVE_API + '?q=' + encodeURIComponent("name='" + BACKUP_NAME + "' and trashed=false") + '&fields=files(id,name)';
+  var data = await (await driveFetch(url)).json();
+  return (data.files && data.files.length) ? data.files[0] : null;
+}
+
+async function syncDriveAuto(manual) {
+  if (!dToken()) return;
+  try {
+    var f = await findBackup();
+    if (!f) { if (manual) toast('Encara no hi ha cap còpia a Drive.'); return; }
+    var raw = await (await driveFetch(DRIVE_API + '/' + f.id + '?alt=media')).json();
+    var imported = sanitizeItems(Array.isArray(raw) ? raw : (raw.data || []));
+    var remoteDate = raw.updatedAt ? new Date(raw.updatedAt) : null;
+    var ls = localStorage.getItem('juicios_updated');
+    var localDate = ls ? new Date(ls) : null;
+    var remoteNewer = !!(remoteDate && (!localDate || remoteDate > localDate));
+
+    if (remoteNewer && imported.length) {
+      var msg = items.length
+        ? 'S\'han trobat dades MÉS RECENTS a Google Drive (' + remoteDate.toLocaleString('ca-ES') + ').\n\nVols actualitzar les teves dades locals?'
+        : 'Hi ha una còpia a Google Drive (' + remoteDate.toLocaleString('ca-ES') + ').\n\nVols restaurar-la en aquest dispositiu?';
+      if (confirm(msg)) {
+        items = imported;
+        if (raw.quadrant === '' || raw.quadrant === '7x7-A' || raw.quadrant === '7x7-B') {
+          selectedQuadrant = raw.quadrant;
+          localStorage.setItem('juicios_quadrant', selectedQuadrant);
+        }
+        lsWrite();
+        localStorage.setItem('juicios_updated', remoteDate.toISOString());
+        render();
+        toast('Sincronitzat des de Google Drive ✓');
+      }
+    } else if (manual) {
+      toast(remoteDate && localDate && localDate > remoteDate
+        ? 'Les dades locals són més recents. Prem «Desar» per pujar-les.'
+        : 'Tot al dia ✓');
+    }
+  } catch (e) {
+    toast(e.message || 'Error amb Drive');
+  }
+}
+
+async function saveToDrive(silent) {
+  if (!dToken()) {
+    if (!silent) toast('Connecta primer el teu compte de Google Drive.');
     return;
   }
-  var payload = {
-    updatedAt: new Date().toISOString(),
-    count: items.length,
-    data: items
-  };
-
-  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27judicis_backup.json%27%20and%20trashed%3Dfalse', {
-    headers: { 'Authorization': 'Bearer ' + accessToken }
-  })
-  .then(function(res) { return res.json(); })
-  .then(function(data) {
-    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    if (data.files && data.files.length > 0) {
-      var fileId = data.files[0].id;
-      fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media', {
+  var updatedAt = new Date().toISOString();
+  var body = JSON.stringify({ updatedAt: updatedAt, count: items.length, data: items, quadrant: selectedQuadrant });
+  try {
+    var f = await findBackup();
+    if (f) {
+      await driveFetch(UPLOAD_API + '/' + f.id + '?uploadType=media', {
         method: 'PATCH',
-        headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-        body: blob
-      }).then(function() { alert('Desat i sincronitzat a Google Drive amb èxit!'); });
+        headers: { 'Content-Type': 'application/json' },
+        body: body
+      });
     } else {
-      var metadata = { name: 'judicis_backup.json', mimeType: 'application/json' };
       var form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', blob);
-
-      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + accessToken },
-        body: form
-      }).then(function() { alert('Còpia creada a Google Drive amb èxit!'); });
+      form.append('metadata', new Blob([JSON.stringify({ name: BACKUP_NAME, mimeType: 'application/json' })], { type: 'application/json' }));
+      form.append('file', new Blob([body], { type: 'application/json' }));
+      await driveFetch(UPLOAD_API + '?uploadType=multipart', { method: 'POST', body: form });
     }
-  });
+    localStorage.setItem('juicios_updated', updatedAt);
+    toast('Desat a Google Drive ✓');
+  } catch (e) {
+    toast('Drive: ' + (e.message || 'no s\'ha pogut desar'));
+  }
 }
 
+// ---------- CRUD ----------
 function save(j) {
   var i = items.findIndex(function(x) { return x.id === j.id; });
   if (i < 0) { items.push(Object.assign({}, j)); } else { items[i] = Object.assign({}, j); }
@@ -323,6 +484,10 @@ function save(j) {
 }
 
 function remove(id) {
+  var it = items.filter(function(x) { return x.id === id; })[0];
+  if (it && it.files) {
+    it.files.forEach(function(f) { if (!f.link && f.id) dbDel(f.id).catch(function() {}); });
+  }
   items = items.filter(function(x) { return x.id !== id; });
   lsWrite();
 }
@@ -335,21 +500,23 @@ function status(j) {
   return ['Celebrat · falta DAD 67', 'wa'];
 }
 
-function calUrl(j) {
-  if (!j.fecha) return '#';
-  var d = j.fecha.replace(/-/g, '');
-  var h = (j.hora || '09:00').split(':');
-  var s = h[0] + h[1] + '00';
-  var e = String(Math.min(23, Number(h[0]) + 2)).padStart(2, '0') + h[1] + '00';
-  var det = ['Expedient: ' + (j.expedient || ''), 'Procediment: ' + (j.proc || ''), 'Òrgan: ' + (j.juzgado || ''), 'Sala: ' + (j.sala || ''), 'Atestat: ' + (j.atestado || ''), 'Qualitat: ' + (j.qualitat || ''), 'Modalitat: ' + (j.modalidadPrev || ''), j.notas || ''].join('\n');
-  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent((j.objecte || 'Judici') + ' ' + (j.proc || j.expedient || '')) + '&dates=' + d + 'T' + s + '/' + d + 'T' + e + '&ctz=Europe/Madrid&location=' + encodeURIComponent([j.juzgado, j.adreca, j.sala].filter(Boolean).join(', ')) + '&details=' + encodeURIComponent(det);
-}
-
 function timeToMinutes(tStr) {
   if (!tStr) return null;
-  var p = tStr.split(':');
+  var p = String(tStr).split(':');
   if (p.length < 2) return null;
-  return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+  var v = parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+  return isNaN(v) ? null : v;
+}
+
+function calUrl(j) {
+  if (!j.fecha) return '#';
+  var d = String(j.fecha).replace(/-/g, '');
+  var sm = timeToMinutes(j.hora);
+  if (sm === null) sm = 540; // 09:00 per defecte
+  var em = Math.min(1439, sm + 120);
+  var hhmm = function(m) { return String(Math.floor(m / 60)).padStart(2, '0') + String(m % 60).padStart(2, '0') + '00'; };
+  var det = ['Expedient: ' + (j.expedient || ''), 'Procediment: ' + (j.proc || ''), 'Òrgan: ' + (j.juzgado || ''), 'Sala: ' + (j.sala || ''), 'Atestat: ' + (j.atestado || ''), 'Qualitat: ' + (j.qualitat || ''), 'Modalitat: ' + (j.modalidadPrev || ''), j.notas || ''].join('\n');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent((j.objecte || 'Judici') + ' ' + (j.proc || j.expedient || '')) + '&dates=' + d + 'T' + hhmm(sm) + '/' + d + 'T' + hhmm(em) + '&ctz=Europe/Madrid&location=' + encodeURIComponent([j.juzgado, j.adreca, j.sala].filter(Boolean).join(', ')) + '&details=' + encodeURIComponent(det);
 }
 
 function getDayCobroInfo(dateKey) {
@@ -360,98 +527,125 @@ function getDayCobroInfo(dateKey) {
   var maxEnd = 0;
 
   dayEvents.forEach(function(x) {
-    var start = timeToMinutes(x.llegada) || timeToMinutes(x.hora);
-    var end = timeToMinutes(x.salida) || (start ? start + 60 : null);
+    var start = timeToMinutes(x.llegada);
+    if (start === null) start = timeToMinutes(x.hora);
+    var end = timeToMinutes(x.salida);
+    if (end === null && start !== null) end = start + 60;
     if (start !== null && start < minStart) minStart = start;
     if (end !== null && end > maxEnd) maxEnd = end;
   });
 
   var diff = (maxEnd > minStart) ? (maxEnd - minStart) : 0;
-  return {
-    isDouble: diff > 180,
-    count: dayEvents.length,
-    diffMin: diff,
-    minStart: minStart,
-    maxEnd: maxEnd
-  };
+  return { isDouble: diff > 180, count: dayEvents.length, diffMin: diff, minStart: minStart, maxEnd: maxEnd };
 }
 
 // --- LÒGICA NOMÉS PER AL 7X7 ---
+function dayNumber(s) {
+  var p = String(s).split('-');
+  return Math.round(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])) / 86400000);
+}
+
 function getShiftForDate(qKey, dateStr) {
   if (!qKey || !dateStr) return null;
-  var target = new Date(dateStr + 'T00:00:00');
-  var refDate = new Date('2026-02-02T00:00:00'); // Dilluns 2 de febrer de 2026
-  var diffTime = target.getTime() - refDate.getTime();
-  var diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
   if (qKey === '7x7-A' || qKey === '7x7-B') {
+    var diffDays = dayNumber(dateStr) - dayNumber(REF_DATE); // independent de l'hora d'estiu/hivern
     var cyclePos = ((diffDays % 14) + 14) % 14;
     var isTr = (cyclePos < 7);
     if (qKey === '7x7-A') isTr = !isTr;
     return isTr ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
-
   return null;
 }
 
-function exportBackup() {
-  var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items, quadrant: selectedQuadrant };
-  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
-  var downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", "judicis_backup.json");
-  document.body.appendChild(downloadAnchor);
-  downloadAnchor.click();
-  downloadAnchor.remove();
+// ---------- Còpia local manual ----------
+async function exportBackup() {
+  try {
+    var atts = {};
+    for (var i = 0; i < items.length; i++) {
+      var fl = items[i].files || [];
+      for (var k = 0; k < fl.length; k++) {
+        var f = fl[k];
+        if (!f.link && f.id) {
+          try {
+            var b = await dbGet(f.id);
+            if (b) atts[f.id] = await blobToDataURL(b);
+          } catch (e) {}
+        }
+      }
+    }
+    var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items, quadrant: selectedQuadrant, attachments: atts };
+    var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'judicis_backup.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+  } catch (e) {
+    alert('No s\'ha pogut exportar el fitxer.');
+  }
 }
 
 function checkAndImportBackup(event) {
-  var file = event.target.files[0];
+  var input = event.target;
+  var file = input.files[0];
   if (!file) return;
   var reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     try {
       var raw = JSON.parse(e.target.result);
-      var importedItems = Array.isArray(raw) ? raw : (raw.data || []);
-      if (confirm('Vols restaurar les dades d\'aquest fitxer local?')) {
-        items = importedItems;
-        if (raw.quadrant !== undefined) {
-          selectedQuadrant = raw.quadrant;
-          localStorage.setItem('juicios_quadrant', selectedQuadrant);
-        }
-        lsWrite();
-        render();
-        alert('Dades actualitzades correctament!');
+      var imported = sanitizeItems(Array.isArray(raw) ? raw : (raw.data || []));
+      if (!confirm('Vols restaurar les dades d\'aquest fitxer local? Se substituiran les dades actuals.')) return;
+      items = imported;
+      if (raw.quadrant === '' || raw.quadrant === '7x7-A' || raw.quadrant === '7x7-B') {
+        selectedQuadrant = raw.quadrant;
+        localStorage.setItem('juicios_quadrant', selectedQuadrant);
       }
+      var n = 0;
+      if (raw.attachments && typeof raw.attachments === 'object') {
+        for (var id in raw.attachments) {
+          var d = raw.attachments[id];
+          var cid = String(id).replace(/[^a-zA-Z0-9_-]/g, '');
+          if (cid && typeof d === 'string' && d.indexOf('data:') === 0) {
+            try { await dbPut(cid, await (await fetch(d)).blob()); n++; } catch (x) {}
+          }
+        }
+      }
+      await migrateFiles();
+      lsWrite();
+      render();
+      toast('Dades restaurades: ' + items.length + ' judicis, ' + n + ' adjunts ✓');
     } catch (err) {
       alert('Error en llegir el fitxer JSON.');
+    } finally {
+      input.value = '';
     }
   };
   reader.readAsText(file);
 }
 
+// ---------- Llista i calendari ----------
 function changePage(delta) {
   currentPage += delta;
-  if (view === 'list') {
-    updateListOnly();
-  } else {
-    render();
-  }
+  if (view === 'list') updateListOnly(); else render();
 }
 
 function changeMonth(delta) {
-  calDate.setMonth(calDate.getMonth() + delta);
+  calDate = new Date(calDate.getFullYear(), calDate.getMonth() + delta, 1);
   render();
 }
 
 function getFilteredList() {
-  var todayStr = new Date().toISOString().split('T')[0];
+  var todayStr = localDateStr();
   return items.filter(function(j) {
     if (searchQuery) {
       var haystack = [j.proc, j.expedient, j.atestado, j.juzgado, j.objecte, j.notas, j.denunciados, j.testigos, j.qualitat].map(function(s) { return (s || '').toLowerCase(); }).join(' ');
       if (haystack.indexOf(searchQuery) === -1) return false;
     }
-    if (sortBy === 'proximos') {
+    // «Propers judicis» només amaga els passats quan no hi ha cap filtre d'estat actiu
+    if (sortBy === 'proximos' && filter === 'todos') {
       if (!j.fecha || j.fecha < todayStr) return false;
     }
     if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
@@ -459,8 +653,8 @@ function getFilteredList() {
     if (filter === 'cobro') return j.celebrado === 'si' && j.dad67 && !j.cobrado;
     return true;
   }).sort(function(a, b) {
-    if (sortBy === 'proximos' || sortBy === 'fecha_asc') return (a.fecha || '').localeCompare(b.fecha || '');
-    if (sortBy === 'fecha_desc') return (b.fecha || '').localeCompare(a.fecha || '');
+    if (sortBy === 'proximos' || sortBy === 'fecha_asc') return ((a.fecha || '') + (a.hora || '')).localeCompare((b.fecha || '') + (b.hora || ''));
+    if (sortBy === 'fecha_desc') return ((b.fecha || '') + (b.hora || '')).localeCompare((a.fecha || '') + (a.hora || ''));
     if (sortBy === 'proc') return (a.proc || a.expedient || '').localeCompare(b.proc || b.expedient || '');
     if (sortBy === 'juzgado') return (a.juzgado || '').localeCompare(b.juzgado || '');
     if (sortBy === 'estado') return status(a)[0].localeCompare(status(b)[0]);
@@ -485,7 +679,7 @@ function renderListHTML() {
       var st = status(j);
       var dayInfo = j.fecha ? getDayCobroInfo(j.fecha) : { isDouble: false };
       var shiftInfo = (j.fecha && selectedQuadrant) ? getShiftForDate(selectedQuadrant, j.fecha) : null;
-      
+
       html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
       html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
       html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
@@ -516,27 +710,23 @@ function renderListHTML() {
 
 function updateListOnly() {
   var container = $('#listContainer');
-  if (container) {
-    container.innerHTML = renderListHTML();
-  }
+  if (container) container.innerHTML = renderListHTML();
   var clearBtn = $('#searchClearBtn');
-  if (clearBtn) {
-    clearBtn.style.display = searchQuery ? 'block' : 'none';
-  }
+  if (clearBtn) clearBtn.style.display = searchQuery ? 'block' : 'none';
 }
 
 function renderCalendar() {
   var year = calDate.getFullYear();
   var month = calDate.getMonth();
-  
+
   var firstDay = new Date(year, month, 1);
   var lastDay = new Date(year, month + 1, 0);
-  
+
   var startDayOfWeek = (firstDay.getDay() + 6) % 7;
   var totalDays = lastDay.getDate();
-  
+
   var monthNames = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
-  var todayStr = new Date().toISOString().split('T')[0];
+  var todayStr = localDateStr();
 
   var html = '<div class="card" style="padding:10px">';
   html += '<div class="cal-header">';
@@ -564,6 +754,7 @@ function renderCalendar() {
     var isToday = dateKey === todayStr;
 
     var dayEvents = items.filter(function(j) { return j.fecha === dateKey; });
+    dayEvents.sort(function(a, b) { return (a.hora || '').localeCompare(b.hora || ''); });
     var dayInfo = getDayCobroInfo(dateKey);
     var shiftInfo = selectedQuadrant ? getShiftForDate(selectedQuadrant, dateKey) : null;
 
@@ -575,11 +766,8 @@ function renderCalendar() {
 
     html += '<div class="' + dayClasses + '">';
     html += '<div class="cal-day-header">';
-    if (shiftInfo) {
-      html += '<span class="cal-day-badge">' + shiftInfo.shift + '</span>';
-    } else {
-      html += '<span></span>';
-    }
+    if (shiftInfo) html += '<span class="cal-day-badge">' + shiftInfo.shift + '</span>';
+    else html += '<span></span>';
     html += '<span class="cal-day-num">' + day + '</span>';
     html += '</div>';
 
@@ -588,7 +776,6 @@ function renderCalendar() {
       var isSecondCobro = (dayInfo.isDouble && idx > 0);
       var extraClass = isSecondCobro ? ' double-cobro' : (' ' + st[1]);
       var label = (j.hora ? j.hora + ' ' : '') + (j.proc || j.objecte || 'Judici') + (isSecondCobro ? ' (2n cobram.)' : '');
-      
       html += '<div class="cal-event' + extraClass + '" title="' + esc(label) + '" onclick="event.stopPropagation();edit(\'' + j.id + '\')">' + esc(label) + '</div>';
     });
 
@@ -605,10 +792,11 @@ function renderCalendar() {
   return html;
 }
 
+// ---------- Render principal ----------
 function render() {
   var app = $('#app');
   if (!app) return;
-  
+
   var logoSvg = '<div class="brand-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="380" cy="130" r="30" fill="#58c58a"/></svg></div>';
 
   if (view === 'calendar' || view === 'list') {
@@ -635,7 +823,6 @@ function render() {
     if (view === 'calendar') {
       html += renderCalendar();
     } else {
-      // Caixa de cerca
       html += '<div class="search-box">';
       html += '<span class="search-icon">🔍</span>';
       html += '<input type="text" id="searchInput" placeholder="Cercar procediment, atestat, jutjat..." value="' + esc(searchQuery) + '" oninput="setSearch(this.value)">';
@@ -674,11 +861,11 @@ function render() {
     }
 
     html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
-    if (accessToken) {
-      html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive.</p>';
+    if (dToken()) {
+      html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive. La còpia de Drive inclou les dades dels judicis, però <b>no els fitxers adjunts</b> (es queden en aquest dispositiu).</p>';
       html += '<div class="bar" style="margin-top:8px">';
-      html += '<button class="pri" onclick="saveToDrive()">☁️ Desar / Actualitzar a Drive</button>';
-      html += '<button onclick="syncDriveAuto()">🔄 Comprovar canvis ara</button>';
+      html += '<button class="pri" onclick="saveToDrive(false)">☁️ Desar / Actualitzar a Drive</button>';
+      html += '<button onclick="syncDriveAuto(true)">🔄 Comprovar canvis ara</button>';
       html += '</div>';
     } else {
       html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
@@ -689,12 +876,13 @@ function render() {
     }
 
     html += '<h2>Còpia local manual (JSON)</h2>';
+    html += '<p class="mu" style="margin:6px 0 0">Aquest fitxer sí inclou els adjunts.</p>';
     html += '<div class="bar" style="margin-top:8px">';
     html += '<button onclick="exportBackup()">📥 Exportar fitxer</button>';
     html += '<label class="btn-label" style="margin:0;cursor:pointer">📤 Importar fitxer<input type="file" id="fileImport" accept=".json,application/json,text/json,text/plain" style="position:absolute;opacity:0;width:1px;height:1px" onchange="checkAndImportBackup(event)"></label>';
     html += '</div></div>';
 
-    html += '<p class="mu">Les dades es desen localment al navegador.</p>';
+    html += '<p class="mu">Les dades i els adjunts es desen localment al navegador d\'aquest dispositiu.</p>';
     app.innerHTML = html;
     return;
   }
@@ -722,9 +910,9 @@ function render() {
 
   fHtml += '<label>Modalitat prevista</label><select id="modalidadPrev"><option value="presencial"' + (j.modalidadPrev !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidadPrev === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
   fHtml += '<label>Notes</label><textarea id="notas">' + v('notas') + '</textarea>';
-  fHtml += '<div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="' + calUrl(j) + '">📅 Afegir a Google Calendar</a></div>';
+  fHtml += '<div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="' + esc(calUrl(j)) + '">📅 Afegir a Google Calendar</a></div>';
   fHtml += '<p class="mu">S\'obre Google Calendar amb l\'esdeveniment a punt per confirmar.</p></div>';
-  
+
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Seguiment</h2>';
   fHtml += '<label>S\'ha celebrat?</label><select id="celebrado" onchange="onCelebradoChange(this.value)">';
   [['', 'Pendent'], ['si', 'Sí'], ['no', 'No'], ['suspendido', 'Suspès']].forEach(function(o) {
@@ -733,7 +921,7 @@ function render() {
   fHtml += '</select>';
   fHtml += '<label>Modalitat real</label><select id="modalidad"><option value="presencial"' + (j.modalidad !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidad === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
   fHtml += '<div class="g2"><div><label>Hora d\'arribada</label><input type="time" id="llegada" value="' + v('llegada') + '"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '"></div></div>';
-  
+
   fHtml += '<label>Minuta policial</label><textarea id="minuta" placeholder="Enganxa aquí la minuta policial si l\'has aconseguit posteriorment…">' + v('minuta') + '</textarea>';
   fHtml += '<div class="bar" style="margin-top:6px;margin-bottom:12px"><button type="button" onclick="parseExistingMinuta()">🔍 Extreure detinguts i TIPs de la minuta</button></div>';
 
@@ -753,22 +941,25 @@ function render() {
   fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '" ' + (!isCelebrado ? 'disabled' : '') + '></div>';
   fHtml += '<label class="chk"><input type="checkbox" id="cobrado" ' + ck('cobrado') + '> Cobrat</label>';
   fHtml += '<div><label>Data de cobrament</label><input type="date" id="cobradoFecha" value="' + v('cobradoFecha') + '"></div></div>';
-  
+
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Fitxers de l\'expedient</h2>';
   if (j.files && j.files.length) {
     j.files.forEach(function(f, i) {
-      var dAttr = f.link ? 'target="_blank" rel="noopener"' : 'download="' + esc(f.name) + '"';
-      fHtml += '<div class="row" style="align-items:center;justify-content:space-between"><a href="' + esc(f.url) + '" ' + dAttr + '>📎 ' + esc(f.name) + '</a><button class="dan" onclick="rmFile(' + i + ')">Treure</button></div>';
+      var a = f.link
+        ? '<a href="' + esc(f.url) + '" target="_blank" rel="noopener">📎 ' + esc(f.name) + '</a>'
+        : '<a href="#" onclick="openFile(' + i + ');return false">📎 ' + esc(f.name) + '</a>';
+      fHtml += '<div class="row" style="align-items:center;justify-content:space-between">' + a + '<button class="dan" onclick="rmFile(' + i + ')">Treure</button></div>';
     });
   } else {
     fHtml += '<p class="mu">Sense fitxers.</p>';
   }
-  
+
   fHtml += '<label style="margin-top:10px">Pujar fitxer local (PDF, imatge...)</label>';
   fHtml += '<input type="file" id="fileDirect" onchange="uploadFile(event)">';
-  
+  fHtml += '<p class="mu" style="margin:4px 0 0">Els fitxers es guarden només en aquest dispositiu.</p>';
+
   fHtml += '<label style="margin-top:10px">O afegir un enllaç extern (Drive, Dropbox...)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>';
-  
+
   fHtml += '<div class="bar"><button class="pri" onclick="sv()">Desar</button>' + (isNew ? '' : '<button class="dan" onclick="del()">Eliminar</button>') + '</div>';
 
   app.innerHTML = fHtml;
@@ -776,9 +967,7 @@ function render() {
 
 function onCelebradoChange(val) {
   collect();
-  if (val !== 'si') {
-    cur.dad67 = false;
-  }
+  if (val !== 'si') cur.dad67 = false;
   render();
 }
 
@@ -786,27 +975,55 @@ var F = ['expedient','proc','atestado','juzgado','adreca','fax','telefon','sala'
 var C = ['justificante','dad67','cobrado'];
 
 function collect() {
-  F.forEach(function(k) { if ($('#'+k)) cur[k] = $('#'+k).value; });
-  C.forEach(function(k) { if ($('#'+k)) cur[k] = $('#'+k).checked; });
+  F.forEach(function(k) { if ($('#' + k)) cur[k] = $('#' + k).value; });
+  C.forEach(function(k) { if ($('#' + k)) cur[k] = $('#' + k).checked; });
 }
 
 function sync() { collect(); $('#cal').href = calUrl(cur); }
-function sv() { collect(); save(cur); if (accessToken) saveToDrive(); back(); }
-function del() { if (confirm('Vols eliminar aquest judici?')) { remove(cur.id); if (accessToken) saveToDrive(); back(); } }
+function sv() { collect(); save(cur); saveToDrive(true); back(); }
+function del() {
+  if (confirm('Vols eliminar aquest judici?')) {
+    remove(cur.id);
+    saveToDrive(true);
+    back();
+  }
+}
 
-function uploadFile(event) {
+async function uploadFile(event) {
   collect();
-  var file = event.target.files[0];
+  var input = event.target;
+  var file = input.files[0];
   if (!file) return;
-  
-  var reader = new FileReader();
-  reader.onload = function(e) {
+  try {
+    var id = newFileId();
+    await dbPut(id, file);
     cur.files = cur.files || [];
-    cur.files.push({ name: file.name, url: e.target.result, link: false });
+    cur.files.push({ id: id, name: file.name, type: file.type || '', link: false });
     save(cur);
     render();
-  };
-  reader.readAsDataURL(file);
+  } catch (e) {
+    alert('No s\'ha pogut desar el fitxer en aquest dispositiu.');
+    input.value = '';
+  }
+}
+
+async function openFile(i) {
+  var f = cur && cur.files && cur.files[i];
+  if (!f || f.link) return;
+  try {
+    var b = f.id ? await dbGet(f.id) : null;
+    if (!b) { alert('Aquest fitxer no està disponible en aquest dispositiu.'); return; }
+    var u = URL.createObjectURL(b);
+    var a = document.createElement('a');
+    a.href = u;
+    a.download = f.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(u); }, 15000);
+  } catch (e) {
+    alert('No s\'ha pogut obrir el fitxer.');
+  }
 }
 
 function addLink() {
@@ -819,13 +1036,20 @@ function addLink() {
   render();
 }
 
-function rmFile(i) { collect(); cur.files.splice(i, 1); save(cur); render(); }
+function rmFile(i) {
+  collect();
+  var f = cur.files[i];
+  cur.files.splice(i, 1);
+  if (f && !f.link && f.id) dbDel(f.id).catch(function() {});
+  save(cur);
+  render();
+}
 
 function parseExistingMinuta() {
   collect();
   var t = cur.minuta || '';
   if (!t.trim()) {
-    alert('Afegeix primer el text de la minuta al camp correspondut.');
+    alert('Afegeix primer el text de la minuta al camp corresponent.');
     return;
   }
 
@@ -835,9 +1059,7 @@ function parseExistingMinuta() {
     tipsMatched.forEach(function(item) {
       var num = item.replace(/TIP\s*/i, '').trim();
       var formatted = 'TIP ' + num;
-      if (tipsSet.indexOf(formatted) === -1) {
-        tipsSet.push(formatted);
-      }
+      if (tipsSet.indexOf(formatted) === -1) tipsSet.push(formatted);
     });
   }
 
@@ -858,28 +1080,28 @@ function parseExistingMinuta() {
   cur.denunciados = detinguts.join('\n');
 
   render();
-  alert('Dades de la minuta extretes correctament!');
+  toast('Dades de la minuta extretes ✓');
 }
 
 function parsePaste() {
   collect();
   var t = $('#paste').value;
   var g = function(r) { var m = t.match(r); return m ? m[1].trim() : ''; };
-  var st = function(k, v) { if (v) cur[k] = v; };
+  var st = function(k, val) { if (val) cur[k] = val; };
 
   st('expedient', g(/Expedient:?\s*([^\n]+)/i));
   st('juzgado', g(/[ÒO]rgan jurisdiccional:?\s*([^\n]+)/i));
   st('adreca', g(/Adre[çc]a:?\s*([^\n]+)/i));
   st('fax', g(/Fax:?\s*([^\n]+)/i));
   st('telefon', g(/Tel[èe]fon:?\s*([^\n]+)/i));
-  
+
   var d = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})[ \t]*([^\n]*)/);
   if (d) {
     cur.fecha = d[3] + '-' + d[2].padStart(2, '0') + '-' + d[1].padStart(2, '0');
     cur.hora = d[4].padStart(2, '0') + ':' + d[5];
     cur.sala = d[6].trim();
   }
-  
+
   st('atestado', g(/Atestat:?\s*([^\n]+)/i));
   st('proc', g(/Procediment:?\s*([^\n]+)/i));
   st('qualitat', g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
@@ -890,13 +1112,9 @@ function parsePaste() {
     var tipsSet = [];
     tipsMatched.forEach(function(item) {
       var num = item.replace(/TIP\s*/i, '').trim();
-      if (tipsSet.indexOf('TIP ' + num) === -1) {
-        tipsSet.push('TIP ' + num);
-      }
+      if (tipsSet.indexOf('TIP ' + num) === -1) tipsSet.push('TIP ' + num);
     });
-    if (tipsSet.length) {
-      cur.testigos = tipsSet.join('\n');
-    }
+    if (tipsSet.length) cur.testigos = tipsSet.join('\n');
   }
 
   var detinguts = [];
@@ -912,13 +1130,9 @@ function parsePaste() {
     if (nomSr && nomSr.length > 2 && detinguts.indexOf(nomSr) === -1) detinguts.push(nomSr);
   }
 
-  if (detinguts.length) {
-    cur.denunciados = detinguts.join('\n');
-  }
+  if (detinguts.length) cur.denunciados = detinguts.join('\n');
 
-  if (t.toUpperCase().indexOf('MINUTA POLICIAL') !== -1) {
-    cur.minuta = t;
-  }
+  if (t.toUpperCase().indexOf('MINUTA POLICIAL') !== -1) cur.minuta = t;
 
   render();
 }
@@ -926,9 +1140,11 @@ function parsePaste() {
 function edit(id) {
   if (id) {
     var found = items.filter(function(x) { return x.id === id; })[0];
+    if (!found) return;
     cur = Object.assign({}, found);
+    cur.files = (found.files || []).map(function(f) { return Object.assign({}, f); });
   } else {
-    cur = { id: 'j' + Date.now().toString(36) };
+    cur = { id: 'j' + Date.now().toString(36), files: [] };
   }
   view = 'form';
   render();
@@ -937,6 +1153,7 @@ function edit(id) {
 
 function back() {
   view = localStorage.getItem('juicios_view') || 'calendar';
+  if (view !== 'calendar' && view !== 'list') view = 'calendar';
   cur = null;
   render();
 }
