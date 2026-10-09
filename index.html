@@ -376,75 +376,69 @@ function getDayCobroInfo(dateKey) {
   };
 }
 
-// --- LÒGICA DE CÀLCUL DE QUADRANTS POLICIALS ---
+// --- LÒGICA DE CÀLCUL DE QUADRANTS POLICIALS (ANCORAT AL 2 DE FEBRER DE 2026) ---
 function getShiftForDate(qKey, dateStr) {
   if (!qKey || !dateStr) return null;
   var target = new Date(dateStr + 'T00:00:00');
-  var dayOfWeek = (target.getDay() + 6) % 7; // 0=Dl, 1=Dt, ..., 4=Dv, 5=Ds, 6=Dg
+  var dayOfWeek = (target.getDay() + 6) % 7; // 0=Dl, 1=Dt, ..., 5=Ds, 6=Dg
+  var refDate = new Date('2026-02-02T00:00:00'); // Dilluns 2 de febrer de 2026
+  var diffDays = Math.round((target - refDate) / 86400000);
+  var weekNum = Math.floor(diffDays / 7);
 
-  // Cicle 5 dies
+  // 1. Quadrant 5 dies (Totalment independent: Dl-Dv treball, Ds-Dg festa fix)
   if (qKey === '5d') {
     return (dayOfWeek < 5) ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
 
-  // Cicles 7x7
+  // 2. Quadrants 7x7 (A comença en Festa, B en Treball)
   if (qKey === '7x7-A' || qKey === '7x7-B') {
-    var ref7 = new Date('2026-01-05T00:00:00');
-    var diffDays = Math.round((target - ref7) / 86400000);
     var cyclePos = ((diffDays % 14) + 14) % 14;
     var isTr = (cyclePos < 7);
     if (qKey === '7x7-A') isTr = !isTr;
     return isTr ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
   }
 
-  // Cicles Q3 (3 setmanes)
+  // 3. Quadrants Q3 (Bucle de 3 setmanes)
   if (qKey.startsWith('Q3-')) {
-    var refQ3 = new Date('2026-01-05T00:00:00');
-    var diffDaysQ3 = Math.round((target - refQ3) / 86400000);
-    var weekNum3 = Math.floor(diffDaysQ3 / 7);
-    var cycleWeek3 = ((weekNum3 % 3) + 3) % 3;
+    var cycleWeek3 = ((weekNum % 3) + 3) % 3;
     var escNum3 = parseInt(qKey.replace(/[^0-9]/g, ''), 10) || 1;
-    var shiftedWeek3 = (cycleWeek3 + (escNum3 - 1)) % 3;
+    var baseOffset3 = { 1: 2, 2: 0, 3: 1 };
+    var shiftedWeek3 = (cycleWeek3 + (baseOffset3[escNum3] || 0)) % 3;
 
-    if (shiftedWeek3 === 0) return { shift: 'F', type: 'festa' };
-    if (shiftedWeek3 === 1) return (dayOfWeek < 5) ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
-    if (shiftedWeek3 === 2) return { shift: 'Tr', type: 'treball' };
+    if (shiftedWeek3 === 0) {
+      return { shift: 'F', type: 'festa' };
+    } else if (shiftedWeek3 === 1) {
+      return (dayOfWeek < 5) ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
+    } else if (shiftedWeek3 === 2) {
+      return { shift: 'Tr', type: 'treball' };
+    }
   }
 
-  // Cicles Q5T / Q5 (Ajustat exactament segons l'escalat oficial Q5T)
+  // 4. Quadrants Q5 / Q5T (Bucle de 5 setmanes)
   if (qKey.startsWith('Q5T-') || qKey.startsWith('Q5-')) {
-    // Referència: El dilluns 5 d'Octubre de 2026, l'Escamot 2 fa la setmana de Matins (M)
-    var refQ5 = new Date('2026-10-05T00:00:00');
-    var diffDaysQ5 = Math.round((target - refQ5) / 86400000);
-    var weekNum5 = Math.floor(diffDaysQ5 / 7);
-    var cycleWeek5 = ((weekNum5 % 5) + 5) % 5;
-
+    var cycleWeek5 = ((weekNum % 5) + 5) % 5;
     var escNum5 = parseInt(qKey.replace(/[^0-9]/g, ''), 10) || 1;
-    // Escamot 2 és l'índex base 0 en la referència
-    var shiftedWeek5 = ((cycleWeek5 + (escNum5 - 2)) % 5 + 5) % 5;
+    
+    var baseOffset5 = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 };
+    var shiftedWeek5 = (cycleWeek5 + (baseOffset5[escNum5] || 0)) % 5;
+    var isQ5T = qKey.startsWith('Q5T-');
 
-    // Matriu de torns per setmana del cicle Q5T:
-    // Setmana 0: Matins (Dl-Dj: M, Dv: F, Ds-Dg: MT)
-    // Setmana 1: Festa total (Dl-Dg: F)
-    // Setmana 2: Tardes (Dl-Dv: T, Ds-Dg: F)
-    // Setmana 3: Reforç / Nit (Dl-Dg: R)
-    // Setmana 4: Festa total (Dl-Dg: F)
-
-    if (shiftedWeek5 === 0) { // Setmana M / MT
+    if (shiftedWeek5 === 0) {
       if (dayOfWeek < 4) return { shift: 'M', type: 'treball' };
       if (dayOfWeek === 4) return { shift: 'F', type: 'festa' };
       return { shift: 'MT', type: 'treball' };
     }
-    if (shiftedWeek5 === 1) { // Setmana F
+    if (shiftedWeek5 === 1) {
       return { shift: 'F', type: 'festa' };
     }
-    if (shiftedWeek5 === 2) { // Setmana T
+    if (shiftedWeek5 === 2) {
       return (dayOfWeek < 5) ? { shift: 'T', type: 'treball' } : { shift: 'F', type: 'festa' };
     }
-    if (shiftedWeek5 === 3) { // Setmana R
-      return { shift: 'R', type: 'treball' };
+    if (shiftedWeek5 === 3) {
+      var shiftName = isQ5T ? 'R' : 'N';
+      return { shift: shiftName, type: 'treball' };
     }
-    if (shiftedWeek5 === 4) { // Setmana F
+    if (shiftedWeek5 === 4) {
       return { shift: 'F', type: 'festa' };
     }
   }
