@@ -1217,6 +1217,64 @@ function rmFile(i) {
   render();
 }
 
+// ---------- Extracció de dades de la minuta ----------
+// Persones detenudes: línies del bloc «Dades de la detenció» amb el format «Nom COGNOMS nascut/da ...»
+function extractDetinguts(t) {
+  var txt = String(t || '');
+  var out = [];
+  var add = function(n) {
+    n = String(n || '').replace(/\s+/g, ' ').trim();
+    if (n.length < 3 || n.length > 80 || /\d/.test(n)) return;
+    if (out.some(function(x) { return x.toLowerCase() === n.toLowerCase(); })) return;
+    out.push(n);
+  };
+
+  var start = txt.search(/dades de la detenci[óo]/i);
+  var scope = start >= 0 ? txt.slice(start) : txt;
+  var end = scope.search(/que (?:han|ha) estat detingut/i);
+  if (end > 0) scope = scope.slice(0, end);
+
+  var re = /^[ \t]*(?:[-–•.]+[ \t]*)?([^\n\d]{3,80}?)[ \t]+nasc(?:ut|uda)\b/gim;
+  var m;
+  while ((m = re.exec(scope)) !== null) add(m[1]);
+
+  if (!out.length) { // formats antics (compatibilitat)
+    var m1 = txt.matchAll(/-\s*([A-Za-zÀ-ÿ\s]+)\s+nasc(?:ut|uda)\s+/gi);
+    for (var a1 of m1) add(a1[1]);
+    var m2 = txt.matchAll(/Sr\.\s+([A-Za-zÀ-ÿ\s]+)(?:amb|\,)/gi);
+    for (var a2 of m2) add(a2[1]);
+  }
+  return out;
+}
+
+// Agents actuants: TIPs del bloc «per:» fins a «com a presumptes autors» (exclou vigilants, testimonis...)
+function extractTips(t) {
+  var txt = String(t || '');
+  var scope = txt;
+  var a = txt.search(/(?:^|\n)[ \t]*per:[ \t]*(?:\r?\n|$)/i);
+  if (a >= 0) {
+    var rest = txt.slice(a);
+    var b = rest.search(/com a presumpt/i);
+    scope = b > 0 ? rest.slice(0, b) : rest;
+  }
+  var found = scope.match(/TIP\s*(\d+)/gi);
+  if (!found && scope !== txt) found = txt.match(/TIP\s*(\d+)/gi);
+  var out = [];
+  (found || []).forEach(function(item) {
+    var f = 'TIP ' + item.replace(/TIP\s*/i, '').trim();
+    if (out.indexOf(f) === -1) out.push(f);
+  });
+  return out;
+}
+
+function mergeLines(existing, extra) {
+  var list = existing ? String(existing).split('\n').map(function(x) { return x.trim(); }).filter(Boolean) : [];
+  extra.forEach(function(x) {
+    if (!list.some(function(y) { return y.toLowerCase() === x.toLowerCase(); })) list.push(x);
+  });
+  return list.join('\n');
+}
+
 function parseExistingMinuta() {
   collect();
   var t = cur.minuta || '';
@@ -1224,35 +1282,15 @@ function parseExistingMinuta() {
     alert('Afegeix primer el text de la minuta al camp corresponent.');
     return;
   }
+  var tips = extractTips(t);
+  var det = extractDetinguts(t);
 
-  var tipsMatched = t.match(/TIP\s*(\d+)/gi);
-  var tipsSet = cur.testigos ? cur.testigos.split('\n').filter(Boolean) : [];
-  if (tipsMatched) {
-    tipsMatched.forEach(function(item) {
-      var num = item.replace(/TIP\s*/i, '').trim();
-      var formatted = 'TIP ' + num;
-      if (tipsSet.indexOf(formatted) === -1) tipsSet.push(formatted);
-    });
-  }
-
-  var detinguts = cur.denunciados ? cur.denunciados.split('\n').filter(Boolean) : [];
-  var matchesDet = t.matchAll(/-\s*([A-Za-zÀ-ÿ\s]+)\s+nascut[a]?\s+/gi);
-  for (var m of matchesDet) {
-    var nom = m[1].trim();
-    if (nom && detinguts.indexOf(nom) === -1) detinguts.push(nom);
-  }
-
-  var matchesSr = t.matchAll(/Sr\.\s+([A-Za-zÀ-ÿ\s]+)(?:amb|\,)/gi);
-  for (var m2 of matchesSr) {
-    var nomSr = m2[1].trim();
-    if (nomSr && nomSr.length > 2 && detinguts.indexOf(nomSr) === -1) detinguts.push(nomSr);
-  }
-
-  cur.testigos = tipsSet.join('\n');
-  cur.denunciados = detinguts.join('\n');
+  cur.testigos = mergeLines(cur.testigos, tips);
+  cur.denunciados = mergeLines(cur.denunciados, det);
 
   render();
-  toast('Dades de la minuta extretes ✓');
+  if (!det.length) alert('No he trobat cap persona detinguda o investigada a la minuta. Revisa que hi hagi el bloc «Dades de la detenció».');
+  else toast('Extrets: ' + det.length + ' detingut(s)/investigat(s) i ' + tips.length + ' TIP(s) ✓');
 }
 
 function parsePaste() {
@@ -1279,30 +1317,11 @@ function parsePaste() {
   st('qualitat', g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
   st('objecte', g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
 
-  var tipsMatched = t.match(/TIP\s*(\d+)/gi);
-  if (tipsMatched) {
-    var tipsSet = [];
-    tipsMatched.forEach(function(item) {
-      var num = item.replace(/TIP\s*/i, '').trim();
-      if (tipsSet.indexOf('TIP ' + num) === -1) tipsSet.push('TIP ' + num);
-    });
-    if (tipsSet.length) cur.testigos = tipsSet.join('\n');
-  }
+  var tips = extractTips(t);
+  if (tips.length) cur.testigos = tips.join('\n');
 
-  var detinguts = [];
-  var matchesDet = t.matchAll(/-\s*([A-Za-zÀ-ÿ\s]+)\s+nascut[a]?\s+/gi);
-  for (var m of matchesDet) {
-    var nom = m[1].trim();
-    if (nom && detinguts.indexOf(nom) === -1) detinguts.push(nom);
-  }
-
-  var matchesSr = t.matchAll(/Sr\.\s+([A-Za-zÀ-ÿ\s]+)(?:amb|\,)/gi);
-  for (var m2 of matchesSr) {
-    var nomSr = m2[1].trim();
-    if (nomSr && nomSr.length > 2 && detinguts.indexOf(nomSr) === -1) detinguts.push(nomSr);
-  }
-
-  if (detinguts.length) cur.denunciados = detinguts.join('\n');
+  var det = extractDetinguts(t);
+  if (det.length) cur.denunciados = det.join('\n');
 
   if (t.toUpperCase().indexOf('MINUTA POLICIAL') !== -1) cur.minuta = t;
 
