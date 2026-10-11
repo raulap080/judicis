@@ -201,6 +201,7 @@ function cleanFile(f) {
   }
   var o = { name: name, link: false, type: String(f.type || '') };
   if (f.id) o.id = String(f.id).replace(/[^a-zA-Z0-9_-]/g, '');
+  if (f.driveId) o.driveId = String(f.driveId).replace(/[^a-zA-Z0-9_-]/g, '');
   if (typeof f.url === 'string' && f.url.indexOf('data:') === 0) o.url = f.url; // format antic, es migra a IndexedDB
   return o;
 }
@@ -349,6 +350,7 @@ function init() {
     if (view === 'calendar' || view === 'list') render();
   });
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  if (dToken()) syncDriveAuto(false);
 }
 
 function obrirModalDrive() { $('#modalDrive').style.display = 'flex'; }
@@ -411,6 +413,100 @@ async function findBackup() {
   return (data.files && data.files.length) ? data.files[0] : null;
 }
 
+// ---------- Adjunts a Google Drive ----------
+var driveFolderId = null;
+var FOLDER_NAME = 'Judicis - adjunts';
+
+async function ensureFolder() {
+  if (driveFolderId) return driveFolderId;
+  var q = "name='" + FOLDER_NAME + "' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  var data = await (await driveFetch(DRIVE_API + '?q=' + encodeURIComponent(q) + '&fields=files(id)')).json();
+  if (data.files && data.files.length) { driveFolderId = data.files[0].id; return driveFolderId; }
+  var r = await driveFetch(DRIVE_API + '?fields=id', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+  });
+  driveFolderId = (await r.json()).id;
+  return driveFolderId;
+}
+
+async function uploadAttachment(f) {
+  var blob = await dbGet(f.id);
+  if (!blob) return false; // no és en aquest dispositiu: no hi ha res a pujar
+  var folder = await ensureFolder();
+  var form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify({ name: f.id + '__' + f.name, parents: [folder] })], { type: 'application/json' }));
+  form.append('file', blob);
+  var r = await driveFetch(UPLOAD_API + '?uploadType=multipart&fields=id', { method: 'POST', body: form });
+  f.driveId = (await r.json()).id;
+  return true;
+}
+
+function syncCurDriveId(f) {
+  if (cur && cur.files) cur.files.forEach(function(x) { if (x.id === f.id) x.driveId = f.driveId; });
+}
+
+// Puja a Drive tots els adjunts que encara no hi són. Retorna quants han fallat.
+async function syncAttachmentsUp() {
+  await processPendingDeletes();
+  var pending = [];
+  items.forEach(function(it) {
+    (it.files || []).forEach(function(f) { if (!f.link && f.id && !f.driveId) pending.push(f); });
+  });
+  var fail = 0;
+  for (var i = 0; i < pending.length; i++) {
+    if (!dToken()) { fail += pending.length - i; break; }
+    try {
+      toast('Pujant adjunts a Drive (' + (i + 1) + '/' + pending.length + ')…');
+      if (await uploadAttachment(pending[i])) { syncCurDriveId(pending[i]); lsWrite(); }
+    } catch (e) { fail++; }
+  }
+  return fail;
+}
+
+// Esborrats pendents: si s'elimina un adjunt, també s'elimina de Drive (quan hi ha connexió)
+function queueDriveDelete(driveId) {
+  if (!driveId) return;
+  try {
+    var q = JSON.parse(localStorage.getItem('drive_pending_del') || '[]');
+    if (q.indexOf(driveId) === -1) q.push(driveId);
+    localStorage.setItem('drive_pending_del', JSON.stringify(q));
+  } catch (e) {}
+  if (dToken()) processPendingDeletes();
+}
+
+async function processPendingDeletes() {
+  var q;
+  try { q = JSON.parse(localStorage.getItem('drive_pending_del') || '[]'); } catch (e) { q = []; }
+  if (!q.length || !dToken()) return;
+  var left = [];
+  for (var i = 0; i < q.length; i++) {
+    try { await driveFetch(DRIVE_API + '/' + q[i], { method: 'DELETE' }); }
+    catch (e) { if (String(e.message).indexOf('404') === -1) left.push(q[i]); }
+  }
+  try { localStorage.setItem('drive_pending_del', JSON.stringify(left)); } catch (e) {}
+}
+
+// Després de restaurar des de Drive: baixa els adjunts que falten en aquest dispositiu
+async function downloadMissingAttachments() {
+  var need = [];
+  items.forEach(function(it) {
+    (it.files || []).forEach(function(f) { if (!f.link && f.id && f.driveId) need.push(f); });
+  });
+  var got = 0, fail = 0;
+  for (var i = 0; i < need.length; i++) {
+    try {
+      if (await dbGet(need[i].id)) continue;
+      toast('Baixant adjunts de Drive (' + (i + 1) + '/' + need.length + ')…');
+      var r = await driveFetch(DRIVE_API + '/' + need[i].driveId + '?alt=media');
+      await dbPut(need[i].id, await r.blob());
+      got++;
+    } catch (e) { fail++; }
+  }
+  if (got || fail) toast('Adjunts recuperats: ' + got + (fail ? ' (' + fail + ' no s\'han pogut baixar)' : ' ✓'));
+}
+
 async function syncDriveAuto(manual) {
   if (!dToken()) return;
   try {
@@ -421,7 +517,7 @@ async function syncDriveAuto(manual) {
     var remoteDate = raw.updatedAt ? new Date(raw.updatedAt) : null;
     var ls = localStorage.getItem('juicios_updated');
     var localDate = ls ? new Date(ls) : null;
-    var remoteNewer = !!(remoteDate && (!localDate || remoteDate > localDate));
+    var remoteNewer = !!(remoteDate && (!localDate || remoteDate > localDate || !items.length));
 
     if (remoteNewer && imported.length) {
       var msg = items.length
@@ -437,6 +533,7 @@ async function syncDriveAuto(manual) {
         localStorage.setItem('juicios_updated', remoteDate.toISOString());
         render();
         toast('Sincronitzat des de Google Drive ✓');
+        downloadMissingAttachments();
       }
     } else if (manual) {
       toast(remoteDate && localDate && localDate > remoteDate
@@ -453,6 +550,8 @@ async function saveToDrive(silent) {
     if (!silent) toast('Connecta primer el teu compte de Google Drive.');
     return;
   }
+  var attFail = await syncAttachmentsUp();
+  if (!dToken()) { toast('La sessió de Google ha caducat. Torna a connectar.'); return; }
   var updatedAt = new Date().toISOString();
   var body = JSON.stringify({ updatedAt: updatedAt, count: items.length, data: items, quadrant: selectedQuadrant });
   try {
@@ -470,7 +569,9 @@ async function saveToDrive(silent) {
       await driveFetch(UPLOAD_API + '?uploadType=multipart', { method: 'POST', body: form });
     }
     localStorage.setItem('juicios_updated', updatedAt);
-    toast('Desat a Google Drive ✓');
+    localStorage.setItem('juicios_last_backup', updatedAt);
+    toast(attFail ? 'Desat a Drive, però ' + attFail + ' adjunt(s) pendent(s) de pujar.' : 'Desat a Google Drive ✓');
+    if (view === 'calendar' || view === 'list') render();
   } catch (e) {
     toast('Drive: ' + (e.message || 'no s\'ha pogut desar'));
   }
@@ -486,7 +587,10 @@ function save(j) {
 function remove(id) {
   var it = items.filter(function(x) { return x.id === id; })[0];
   if (it && it.files) {
-    it.files.forEach(function(f) { if (!f.link && f.id) dbDel(f.id).catch(function() {}); });
+    it.files.forEach(function(f) {
+      if (!f.link && f.id) dbDel(f.id).catch(function() {});
+      if (f.driveId) queueDriveDelete(f.driveId);
+    });
   }
   items = items.filter(function(x) { return x.id !== id; });
   lsWrite();
@@ -612,6 +716,8 @@ async function exportBackup() {
     a.click();
     a.remove();
     setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+    localStorage.setItem('juicios_last_backup', new Date().toISOString());
+    if (view === 'calendar' || view === 'list') render();
   } catch (e) {
     alert('No s\'ha pogut exportar el fitxer.');
   }
@@ -656,6 +762,26 @@ function checkAndImportBackup(event) {
 }
 
 // ---------- Llista i calendari ----------
+function backupBannerHTML() {
+  var last = localStorage.getItem('juicios_last_backup');
+  var days = last ? Math.floor((Date.now() - new Date(last).getTime()) / 86400000) : null;
+  var imp = '<label class="btn-label" style="margin:0;cursor:pointer">📤 Importar fitxer<input type="file" accept=".json,application/json,text/json,text/plain" style="position:absolute;opacity:0;width:1px;height:1px" onchange="checkAndImportBackup(event)"></label>';
+  if (!items.length) {
+    return '<div class="info-box warning"><b>No hi ha dades en aquest dispositiu.</b>'
+      + '<p class="mu" style="margin:4px 0 8px">Si ja tenies judicis, restaura\'ls des de Google Drive o des d\'un fitxer de còpia.</p>'
+      + '<div class="bar" style="margin-top:6px">'
+      + (dToken() ? '<button class="pri" onclick="syncDriveAuto(true)">🔄 Restaurar des de Drive</button>' : '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Drive</button>')
+      + imp + '</div></div>';
+  }
+  if (days === null || days >= 14) {
+    return '<div class="info-box warning"><b>' + (days === null ? 'Encara no has fet cap còpia de seguretat.' : 'Fa ' + days + ' dies que no fas cap còpia de seguretat.') + '</b>'
+      + '<div class="bar" style="margin-top:8px">'
+      + (dToken() ? '<button class="pri" onclick="saveToDrive(false)">☁️ Desar a Drive ara</button>' : '')
+      + '<button onclick="exportBackup()">📥 Exportar fitxer</button></div></div>';
+  }
+  return '';
+}
+
 function changePage(delta) {
   currentPage += delta;
   if (view === 'list') updateListOnly(); else render();
@@ -830,6 +956,7 @@ function render() {
 
   if (view === 'calendar' || view === 'list') {
     var html = '<h1><div class="brand">' + logoSvg + '<span>Judicis</span></div><button class="pri" onclick="edit()">+ Nou</button></h1>';
+    html += backupBannerHTML();
 
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
     html += '<div class="view-switcher">';
@@ -900,7 +1027,7 @@ function render() {
 
     html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
     if (dToken()) {
-      html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive. La còpia de Drive inclou les dades dels judicis, però <b>no els fitxers adjunts</b> (es queden en aquest dispositiu).</p>';
+      html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive. La còpia inclou els judicis i els fitxers adjunts (carpeta «Judicis - adjunts»).</p>';
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="saveToDrive(false)">☁️ Desar / Actualitzar a Drive</button>';
       html += '<button onclick="syncDriveAuto(true)">🔄 Comprovar canvis ara</button>';
@@ -994,7 +1121,7 @@ function render() {
 
   fHtml += '<label style="margin-top:10px">Pujar fitxer local (PDF, imatge...)</label>';
   fHtml += '<input type="file" id="fileDirect" onchange="uploadFile(event)">';
-  fHtml += '<p class="mu" style="margin:4px 0 0">Els fitxers es guarden només en aquest dispositiu.</p>';
+  fHtml += '<p class="mu" style="margin:4px 0 0">Els fitxers es guarden en aquest dispositiu i, amb Drive connectat, també a Google Drive.</p>';
 
   fHtml += '<label style="margin-top:10px">O afegir un enllaç extern (Drive, Dropbox...)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>';
 
@@ -1050,6 +1177,12 @@ async function openFile(i) {
   if (!f || f.link) return;
   try {
     var b = f.id ? await dbGet(f.id) : null;
+    if (!b && f.id && f.driveId) {
+      if (!dToken()) { alert('Aquest fitxer és a Google Drive. Connecta Drive (pantalla principal) per baixar-lo.'); return; }
+      toast('Baixant de Drive…');
+      b = await (await driveFetch(DRIVE_API + '/' + f.driveId + '?alt=media')).blob();
+      await dbPut(f.id, b);
+    }
     if (!b) { alert('Aquest fitxer no està disponible en aquest dispositiu.'); return; }
     var u = URL.createObjectURL(b);
     var a = document.createElement('a');
@@ -1060,7 +1193,7 @@ async function openFile(i) {
     a.remove();
     setTimeout(function() { URL.revokeObjectURL(u); }, 15000);
   } catch (e) {
-    alert('No s\'ha pogut obrir el fitxer.');
+    alert('No s\'ha pogut obrir el fitxer.' + (e && e.message ? '\n' + e.message : ''));
   }
 }
 
@@ -1079,6 +1212,7 @@ function rmFile(i) {
   var f = cur.files[i];
   cur.files.splice(i, 1);
   if (f && !f.link && f.id) dbDel(f.id).catch(function() {});
+  if (f && f.driveId) queueDriveDelete(f.driveId);
   save(cur);
   render();
 }
