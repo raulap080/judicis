@@ -138,6 +138,9 @@ var view = localStorage.getItem('juicios_view') || 'calendar';
 if (view !== 'calendar' && view !== 'list') view = 'calendar';
 var selectedQuadrant = localStorage.getItem('juicios_quadrant') || '';
 var cur = null;
+var minutes = [];            // bústia de minutes pendents
+var pendingMinuteId = null;  // minuta recuperada, es treu de la bústia en desar el judici
+var declinedAtestats = {};   // atestats pels quals s'ha dit «no» durant aquesta sessió
 
 var filter = localStorage.getItem('juicios_filter') || 'todos';
 var sortBy = localStorage.getItem('juicios_sort') || 'proximos';
@@ -236,6 +239,129 @@ function lsWrite() {
     alert('⚠️ No s\'han pogut desar les dades (emmagatzematge ple?). Fes ara una còpia amb «Exportar fitxer».');
     return false;
   }
+}
+
+// ---------- Bústia de minutes ----------
+function normAtestat(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+function sanitizeMinutes(arr) {
+  if (!Array.isArray(arr)) return [];
+  var out = [], seen = {};
+  arr.forEach(function(x) {
+    if (!x || typeof x !== 'object') return;
+    var id = String(x.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!id || seen[id]) id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    seen[id] = 1;
+    out.push({ id: id, atestado: String(x.atestado || '').slice(0, 60), text: String(x.text || ''), savedAt: String(x.savedAt || new Date().toISOString()) });
+  });
+  return out;
+}
+
+function minutesRead() {
+  try { return JSON.parse(localStorage.getItem('juicios_minutes') || '[]'); } catch (e) { return []; }
+}
+
+function minutesWrite() {
+  try {
+    localStorage.setItem('juicios_minutes', JSON.stringify(minutes));
+    localStorage.setItem('juicios_updated', new Date().toISOString());
+    return true;
+  } catch (e) {
+    alert('⚠️ No s\'ha pogut desar la minuta (emmagatzematge ple?).');
+    return false;
+  }
+}
+
+function findMinute(atestat) {
+  var n = normAtestat(atestat);
+  if (!n) return null;
+  return minutes.filter(function(m) { return normAtestat(m.atestado) === n; })[0] || null;
+}
+
+function removeMinute(id) {
+  minutes = minutes.filter(function(m) { return m.id !== id; });
+  minutesWrite();
+}
+
+function detectAtestat(text) {
+  var m = String(text || '').match(/(?:atestat|dilig[èe]ncies)[^\d\n]{0,25}(\d[\d\/\-\.]*\d|\d)/i);
+  return m ? m[1] : '';
+}
+
+function openMinutes() { view = 'minutes'; render(); window.scrollTo(0, 0); }
+
+function addMinute() {
+  var at = $('#mAtestat').value.trim();
+  var tx = $('#mText').value;
+  if (!tx.trim()) { alert('Enganxa primer el text de la minuta.'); return; }
+  if (!at) at = detectAtestat(tx);
+  if (!at) { alert('Escriu el número d\'atestat (diligències) de la minuta.'); return; }
+  var ex = findMinute(at);
+  if (ex) {
+    if (!confirm('Ja hi ha una minuta per a l\'atestat ' + ex.atestado + '. Vols substituir-la?')) return;
+    minutes = minutes.filter(function(m) { return m.id !== ex.id; });
+  }
+  minutes.push({ id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), atestado: at, text: tx, savedAt: new Date().toISOString() });
+  if (!minutesWrite()) return;
+  saveToDrive(true);
+  toast('Minuta desada a la bústia ✓');
+  render();
+}
+
+function delMinute(id) {
+  if (confirm('Vols eliminar aquesta minuta de la bústia?')) {
+    removeMinute(id);
+    saveToDrive(true);
+    render();
+  }
+}
+
+function renderMinutesHTML() {
+  var h = '<h1>Bústia de minutes <button onclick="back()">Tancar</button></h1>';
+  h += '<div class="card"><h2 style="border:0;margin:0;padding:0">Afegir minuta</h2>';
+  h += '<p class="mu">Guarda la minuta amb el número d\'atestat. Quan donis d\'alta el judici amb aquest atestat, l\'app et demanarà si vols recuperar-la.</p>';
+  h += '<label>Número d\'atestat (diligències)</label><input id="mAtestat" placeholder="Ex.: 1234-2025">';
+  h += '<label>Text de la minuta</label><textarea id="mText" style="min-height:140px" placeholder="Enganxa aquí el text de la minuta…"></textarea>';
+  h += '<div class="bar" style="margin-top:8px"><button class="pri" onclick="addMinute()">Desar a la bústia</button></div></div>';
+  h += '<div class="card"><h2 style="border:0;margin:0;padding:0">Minutes pendents (' + minutes.length + ')</h2>';
+  if (!minutes.length) {
+    h += '<p class="mu">No hi ha cap minuta a la bústia.</p>';
+  } else {
+    minutes.slice().sort(function(a, b) { return String(b.savedAt).localeCompare(String(a.savedAt)); }).forEach(function(m) {
+      h += '<div class="card" style="margin:8px 0 0">'
+        + '<b>Atestat ' + esc(m.atestado) + '</b> <span class="mu">· desada ' + esc(new Date(m.savedAt).toLocaleString('ca-ES')) + '</span>'
+        + '<details style="margin-top:6px"><summary class="mu">Veure text</summary><pre style="white-space:pre-wrap;font:inherit;font-size:13px;margin:6px 0 0">' + esc(m.text) + '</pre></details>'
+        + '<div class="bar" style="margin-top:8px"><button class="dan" onclick="delMinute(\'' + m.id + '\')">Eliminar</button></div></div>';
+    });
+  }
+  h += '</div>';
+  return h;
+}
+
+function applyMinute(m) {
+  collect();
+  cur.minuta = m.text;
+  cur.testigos = mergeLines(cur.testigos, extractTips(m.text));
+  cur.denunciados = mergeLines(cur.denunciados, extractDetinguts(m.text));
+  pendingMinuteId = m.id;
+  render();
+  toast('Minuta recuperada ✓ (es treu de la bústia en desar el judici)');
+}
+
+function offerMinute() {
+  if (!cur || !cur.atestado || (cur.minuta || '').trim()) return;
+  var m = findMinute(cur.atestado);
+  if (!m || declinedAtestats[normAtestat(cur.atestado)]) return;
+  if (confirm('Hi ha una minuta a la bústia per a l\'atestat ' + m.atestado + '.\n\nVols recuperar-la?')) applyMinute(m);
+  else declinedAtestats[normAtestat(cur.atestado)] = true;
+}
+
+function onAtestatChange() { collect(); offerMinute(); }
+
+function recoverMinuteBtn() {
+  collect();
+  var m = findMinute(cur.atestado);
+  if (m) applyMinute(m);
 }
 
 // ---------- Adjunts a IndexedDB ----------
@@ -345,6 +471,7 @@ function clearSearch() {
 
 function init() {
   items = sanitizeItems(lsRead());
+  minutes = sanitizeMinutes(minutesRead());
   render();
   migrateFiles().then(function() {
     if (view === 'calendar' || view === 'list') render();
@@ -529,6 +656,7 @@ async function syncDriveAuto(manual) {
           selectedQuadrant = raw.quadrant;
           localStorage.setItem('juicios_quadrant', selectedQuadrant);
         }
+        if (Array.isArray(raw.minutes)) { minutes = sanitizeMinutes(raw.minutes); try { localStorage.setItem('juicios_minutes', JSON.stringify(minutes)); } catch (e) {} }
         lsWrite();
         localStorage.setItem('juicios_updated', remoteDate.toISOString());
         render();
@@ -553,7 +681,7 @@ async function saveToDrive(silent) {
   var attFail = await syncAttachmentsUp();
   if (!dToken()) { toast('La sessió de Google ha caducat. Torna a connectar.'); return; }
   var updatedAt = new Date().toISOString();
-  var body = JSON.stringify({ updatedAt: updatedAt, count: items.length, data: items, quadrant: selectedQuadrant });
+  var body = JSON.stringify({ updatedAt: updatedAt, count: items.length, data: items, quadrant: selectedQuadrant, minutes: minutes });
   try {
     var f = await findBackup();
     if (f) {
@@ -706,7 +834,7 @@ async function exportBackup() {
         }
       }
     }
-    var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items, quadrant: selectedQuadrant, attachments: atts };
+    var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items, quadrant: selectedQuadrant, minutes: minutes, attachments: atts };
     var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -734,6 +862,7 @@ function checkAndImportBackup(event) {
       var imported = sanitizeItems(Array.isArray(raw) ? raw : (raw.data || []));
       if (!confirm('Vols restaurar les dades d\'aquest fitxer local? Se substituiran les dades actuals.')) return;
       items = imported;
+      if (Array.isArray(raw.minutes)) { minutes = sanitizeMinutes(raw.minutes); try { localStorage.setItem('juicios_minutes', JSON.stringify(minutes)); } catch (x) {} }
       if (isValidQuadrant(raw.quadrant)) {
         selectedQuadrant = raw.quadrant;
         localStorage.setItem('juicios_quadrant', selectedQuadrant);
@@ -1025,7 +1154,11 @@ function render() {
       html += '<div id="listContainer">' + renderListHTML() + '</div>';
     }
 
-    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
+    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Bústia de minutes</h2>';
+    html += '<p class="mu" style="margin-top:0">Guarda una minuta amb el número d\'atestat i recupera-la en donar d\'alta el judici.' + (minutes.length ? ' Ara n\'hi ha <b>' + minutes.length + '</b> de pendents.' : '') + '</p>';
+    html += '<div class="bar" style="margin-top:8px"><button class="pri" onclick="openMinutes()">📥 Obrir la bústia de minutes</button></div></div>';
+
+    html += '<div class="card" style="margin-top:10px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
     if (dToken()) {
       html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive. La còpia inclou els judicis i els fitxers adjunts (carpeta «Judicis - adjunts»).</p>';
       html += '<div class="bar" style="margin-top:8px">';
@@ -1052,6 +1185,8 @@ function render() {
     return;
   }
 
+  if (view === 'minutes') { app.innerHTML = renderMinutesHTML(); return; }
+
   var j = cur;
   var v = function(k) { return esc(j[k] || ''); };
   var ck = function(k) { return j[k] ? 'checked' : ''; };
@@ -1065,7 +1200,7 @@ function render() {
     fHtml += '<label>Enganxar la citació o minuta (omple els camps automàticament)</label><textarea id="paste" placeholder="Enganxa aquí el text de la citació o de la minuta…"></textarea><div class="bar" style="margin-top:6px"><button onclick="parsePaste()">Omplir des del text</button></div>';
   }
   fHtml += '<label>Expedient</label><input id="expedient" value="' + v('expedient') + '">';
-  fHtml += '<div class="g2"><div><label>Procediment</label><input id="proc" value="' + v('proc') + '"></div><div><label>Atestat</label><input id="atestado" value="' + v('atestado') + '"></div></div>';
+  fHtml += '<div class="g2"><div><label>Procediment</label><input id="proc" value="' + v('proc') + '"></div><div><label>Atestat</label><input id="atestado" value="' + v('atestado') + '" onchange="onAtestatChange()"></div></div>';
   fHtml += '<label>Òrgan jurisdiccional</label><input id="juzgado" value="' + v('juzgado') + '">';
   fHtml += '<label>Adreça</label><input id="adreca" value="' + v('adreca') + '">';
   fHtml += '<div class="g2"><div><label>Telèfon</label><input id="telefon" type="tel" value="' + v('telefon') + '"></div><div><label>Fax</label><input id="fax" type="tel" value="' + v('fax') + '"></div></div>';
@@ -1085,9 +1220,11 @@ function render() {
   });
   fHtml += '</select>';
   fHtml += '<label>Modalitat real</label><select id="modalidad"><option value="presencial"' + (j.modalidad !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidad === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
-  fHtml += '<div class="g2"><div><label>Hora d\'arribada</label><input type="time" id="llegada" value="' + v('llegada') + '"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '"></div></div>';
+  fHtml += '<div class="g2"><div><label>Hora d\'arribada (buit = hora del judici)</label><input type="time" id="llegada" value="' + v('llegada') + '"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '"></div></div>';
 
   fHtml += '<label>Minuta policial</label><textarea id="minuta" placeholder="Enganxa aquí la minuta policial si l\'has aconseguit posteriorment…">' + v('minuta') + '</textarea>';
+  var mmatch = (j.atestado && !(j.minuta || '').trim()) ? findMinute(j.atestado) : null;
+  if (mmatch) fHtml += '<div class="bar" style="margin-top:6px"><button type="button" class="pri" onclick="recoverMinuteBtn()">📥 Recuperar minuta de la bústia (atestat ' + esc(mmatch.atestado) + ')</button></div>';
   fHtml += '<div class="bar" style="margin-top:6px;margin-bottom:12px"><button type="button" onclick="parseExistingMinuta()">🔍 Extreure detinguts i TIPs de la minuta</button></div>';
 
   fHtml += '<label>Persones denunciades</label><textarea id="denunciados" placeholder="Detinguts o investigats…">' + v('denunciados') + '</textarea>';
@@ -1145,7 +1282,14 @@ function collect() {
 }
 
 function sync() { collect(); $('#cal').href = calUrl(cur); }
-function sv() { collect(); save(cur); saveToDrive(true); back(); }
+function sv() {
+  collect();
+  save(cur);
+  if (pendingMinuteId && (cur.minuta || '').trim()) removeMinute(pendingMinuteId);
+  pendingMinuteId = null;
+  saveToDrive(true);
+  back();
+}
 function del() {
   if (confirm('Vols eliminar aquest judici?')) {
     remove(cur.id);
@@ -1326,6 +1470,7 @@ function parsePaste() {
   if (t.toUpperCase().indexOf('MINUTA POLICIAL') !== -1) cur.minuta = t;
 
   render();
+  offerMinute();
 }
 
 function edit(id) {
@@ -1346,6 +1491,7 @@ function back() {
   view = localStorage.getItem('juicios_view') || 'calendar';
   if (view !== 'calendar' && view !== 'list') view = 'calendar';
   cur = null;
+  pendingMinuteId = null;
   render();
 }
 
