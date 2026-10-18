@@ -1220,7 +1220,7 @@ function render() {
   });
   fHtml += '</select>';
   fHtml += '<label>Modalitat real</label><select id="modalidad"><option value="presencial"' + (j.modalidad !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidad === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
-  fHtml += '<div class="g2"><div><label>Hora d\'arribada (buit = hora del judici)</label><input type="time" id="llegada" value="' + v('llegada') + '"></div><div><label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '"></div></div>';
+  fHtml += '<label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '">';
 
   fHtml += '<label>Minuta policial</label><textarea id="minuta" placeholder="Enganxa aquí la minuta policial si l\'has aconseguit posteriorment…">' + v('minuta') + '</textarea>';
   var mmatch = (j.atestado && !(j.minuta || '').trim()) ? findMinute(j.atestado) : null;
