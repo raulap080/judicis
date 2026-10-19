@@ -272,10 +272,32 @@ function minutesWrite() {
   }
 }
 
+// Números dins d'un text d'atestat: «1234/2025», «1234-25» (→ també 12342025), ignorant la resta del text
+function atestatKeys(x) {
+  var keys = [];
+  (String(x || '').match(/\d+(?:[\/\-\.]\d+)*/g) || []).forEach(function(tok) {
+    var parts = tok.split(/[\/\-\.]/);
+    var k = parts.join('');
+    if (k.length >= 4) keys.push(k);
+    if (parts.length > 1 && parts[parts.length - 1].length === 2) {
+      var k2 = parts.slice(0, -1).join('') + '20' + parts[parts.length - 1];
+      if (k2.length >= 4) keys.push(k2);
+    }
+  });
+  return keys;
+}
+
+function sameAtestat(a, b) {
+  var na = normAtestat(a), nb = normAtestat(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  var kb = atestatKeys(b);
+  return atestatKeys(a).some(function(k) { return kb.indexOf(k) !== -1; });
+}
+
 function findMinute(atestat) {
-  var n = normAtestat(atestat);
-  if (!n) return null;
-  return minutes.filter(function(m) { return normAtestat(m.atestado) === n; })[0] || null;
+  if (!normAtestat(atestat)) return null;
+  return minutes.filter(function(m) { return sameAtestat(m.atestado, atestat); })[0] || null;
 }
 
 function removeMinute(id) {
@@ -303,8 +325,31 @@ function addMinute() {
   }
   minutes.push({ id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), atestado: at, text: tx, savedAt: new Date().toISOString() });
   if (!minutesWrite()) return;
+  var newMin = minutes[minutes.length - 1];
+
+  // Si ja hi ha judicis amb aquest atestat i sense minuta, proposa afegir-la-hi ara
+  var matches = items.filter(function(j) {
+    return sameAtestat(j.atestado, at) && !(j.minuta || '').trim();
+  });
+  var linked = false;
+  if (matches.length) {
+    var desc = matches.length === 1
+      ? 'el judici ' + (matches[0].proc || matches[0].expedient || '') + (matches[0].fecha ? ' (' + fmt(matches[0].fecha) + ')' : '')
+      : matches.length + ' judicis';
+    if (confirm('Hi ha ' + desc + ' amb aquest atestat.\n\nVols afegir-hi la minuta ara?')) {
+      matches.forEach(function(j) {
+        j.minuta = newMin.text;
+        j.testigos = mergeLines(j.testigos, extractTips(newMin.text));
+        j.denunciados = mergeLines(j.denunciados, extractDetinguts(newMin.text));
+      });
+      lsWrite();
+      removeMinute(newMin.id);
+      linked = true;
+    }
+  }
   saveToDrive(true);
-  toast('Minuta desada a la bústia ✓');
+  toast(linked ? 'Minuta afegida ' + (matches.length === 1 ? 'al judici' : 'a ' + matches.length + ' judicis') + ' ✓'
+    : (!matches.length && items.length ? 'Minuta desada. Cap judici sense minuta té aquest atestat.' : 'Minuta desada a la bústia ✓'));
   render();
 }
 
@@ -319,7 +364,7 @@ function delMinute(id) {
 function renderMinutesHTML() {
   var h = '<h1>Bústia de minutes <button onclick="back()">Tancar</button></h1>';
   h += '<div class="card"><h2 style="border:0;margin:0;padding:0">Afegir minuta</h2>';
-  h += '<p class="mu">Guarda la minuta amb el número d\'atestat. Quan donis d\'alta el judici amb aquest atestat, l\'app et demanarà si vols recuperar-la.</p>';
+  h += '<p class="mu">Guarda la minuta amb el número d\'atestat. Quan donis d\'alta el judici amb aquest atestat, l\'app et demanarà si vols recuperar-la. Si el judici ja existeix, t\'ho proposarà en desar la minuta.</p>';
   h += '<label>Número d\'atestat (diligències)</label><input id="mAtestat" placeholder="Ex.: 1234-2025">';
   h += '<label>Text de la minuta</label><textarea id="mText" style="min-height:140px" placeholder="Enganxa aquí el text de la minuta…"></textarea>';
   h += '<div class="bar" style="margin-top:8px"><button class="pri" onclick="addMinute()">Desar a la bústia</button></div></div>';
@@ -357,6 +402,13 @@ function offerMinute() {
 }
 
 function onAtestatChange() { collect(); offerMinute(); }
+
+function pickMinute(id) {
+  collect();
+  var m = minutes.filter(function(x) { return x.id === id; })[0];
+  if (m && confirm('Vols recuperar en aquest judici la minuta de l\'atestat ' + m.atestado + '?')) applyMinute(m);
+  else render();
+}
 
 function recoverMinuteBtn() {
   collect();
@@ -1225,6 +1277,17 @@ function render() {
   fHtml += '<label>Minuta policial</label><textarea id="minuta" placeholder="Enganxa aquí la minuta policial si l\'has aconseguit posteriorment…">' + v('minuta') + '</textarea>';
   var mmatch = (j.atestado && !(j.minuta || '').trim()) ? findMinute(j.atestado) : null;
   if (mmatch) fHtml += '<div class="bar" style="margin-top:6px"><button type="button" class="pri" onclick="recoverMinuteBtn()">📥 Recuperar minuta de la bústia (atestat ' + esc(mmatch.atestado) + ')</button></div>';
+  if (!(j.minuta || '').trim() && minutes.length) {
+    var mopts = minutes.slice().sort(function(a, b) {
+      var ra = sameAtestat(a.atestado, j.atestado) ? 0 : 1, rb = sameAtestat(b.atestado, j.atestado) ? 0 : 1;
+      return (ra - rb) || String(b.savedAt).localeCompare(String(a.savedAt));
+    });
+    fHtml += '<label>O triar una minuta de la bústia (' + minutes.length + ')</label><select onchange="pickMinute(this.value)"><option value="">— Tria una minuta —</option>';
+    mopts.forEach(function(m) {
+      fHtml += '<option value="' + m.id + '">' + (sameAtestat(m.atestado, j.atestado) ? '✔ ' : '') + 'Atestat ' + esc(m.atestado) + '</option>';
+    });
+    fHtml += '</select>';
+  }
   fHtml += '<div class="bar" style="margin-top:6px;margin-bottom:12px"><button type="button" onclick="parseExistingMinuta()">🔍 Extreure detinguts i TIPs de la minuta</button></div>';
 
   fHtml += '<label>Persones denunciades</label><textarea id="denunciados" placeholder="Detinguts o investigats…">' + v('denunciados') + '</textarea>';
@@ -1456,7 +1519,7 @@ function parsePaste() {
     cur.sala = d[6].trim();
   }
 
-  st('atestado', g(/Atestat:?\s*([^\n]+)/i));
+  st('atestado', g(/Atestat:?\s*([^\n]+)/i).split(/\s+(?:Procediment|Qualitat|Objecte|Expedient|Fax|Tel[èe]fon|Adre[çc]a|[ÒO]rgan)\b/i)[0].trim());
   st('proc', g(/Procediment:?\s*([^\n]+)/i));
   st('qualitat', g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
   st('objecte', g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
