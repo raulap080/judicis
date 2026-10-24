@@ -90,6 +90,12 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 
 /* Avís discret */
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1b2430;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;z-index:1000;display:none;max-width:90%;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+/* Lector de minuta */
+.reader{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;line-height:1.65}
+.rd-p{margin:0 0 8px}
+.rd-h{margin:16px 0 6px;font-weight:700}
+.rd-bullet{margin:0 0 8px;padding-left:18px;position:relative}
+.rd-bullet::before{content:'\2022';position:absolute;left:4px}
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -399,6 +405,169 @@ function offerMinute() {
   if (!m || declinedAtestats[normAtestat(cur.atestado)]) return;
   if (confirm('Hi ha una minuta a la bústia per a l\'atestat ' + m.atestado + '.\n\nVols recuperar-la?')) applyMinute(m);
   else declinedAtestats[normAtestat(cur.atestado)] = true;
+}
+
+// ---------- Lector de minuta (vista tipus bloc de notes) ----------
+var readerSize = Number(localStorage.getItem('juicios_reader_size')) || 17;
+
+function openMinutaReader() {
+  collect();
+  if (!(cur.minuta || '').trim()) return;
+  view = 'minutaview';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function closeMinutaReader() { view = 'form'; render(); window.scrollTo(0, 0); }
+
+function readerFont(d) {
+  readerSize = Math.max(13, Math.min(28, readerSize + d));
+  try { localStorage.setItem('juicios_reader_size', String(readerSize)); } catch (e) {}
+  var el = $('#readerBody');
+  if (el) el.style.fontSize = readerSize + 'px';
+}
+
+function formatMinutaHTML(t) {
+  var out = '';
+  String(t || '').replace(/\r/g, '').split('\n').forEach(function(raw) {
+    var line = raw.trim();
+    if (!line) { out += '<div style="height:8px"></div>'; return; }
+    if (/^\.{2,}/.test(line)) { out += '<p class="rd-bullet">' + esc(line.replace(/^\.+\s*/, '')) + '</p>'; return; }
+    if ((/:$/.test(line) && line.length < 60) || /^[A-ZÀ-Ý ]{6,}$/.test(line)) { out += '<p class="rd-h">' + esc(line) + '</p>'; return; }
+    out += '<p class="rd-p">' + esc(line) + '</p>';
+  });
+  return out;
+}
+
+function renderMinutaReaderHTML() {
+  var j = cur || {};
+  var h = '<h1>Minuta <button onclick="closeMinutaReader()">← Tornar al judici</button></h1>';
+  h += '<div class="bar" style="margin:0 0 10px"><button onclick="readerFont(-1)">A−</button><button onclick="readerFont(1)">A+</button><button onclick="copyText(cur.minuta)">📋 Copiar</button></div>';
+  h += '<div class="reader">';
+  h += '<p class="mu" style="margin:0 0 10px"><b>' + esc(j.proc || j.expedient || 'Judici') + '</b>' + (j.atestado ? ' · atestat ' + esc(j.atestado) : '') + (j.fecha ? ' · ' + fmt(j.fecha) : '') + '</p>';
+  if ((j.denunciados || '').trim()) h += '<p class="mu" style="margin:0 0 6px"><b>Persones:</b> ' + esc(j.denunciados.split('\n').filter(Boolean).join(' · ')) + '</p>';
+  if ((j.testigos || '').trim()) h += '<p class="mu" style="margin:0 0 12px"><b>Agents/testimonis:</b> ' + esc(j.testigos.split('\n').filter(Boolean).join(' · ')) + '</p>';
+  h += '<div id="readerBody" style="font-size:' + readerSize + 'px">' + formatMinutaHTML(j.minuta) + '</div></div>';
+  return h;
+}
+
+// ---------- Copiar al porta-retalls ----------
+function fallbackCopy(txt) {
+  var ta = document.createElement('textarea');
+  ta.value = txt;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); toast('Copiat ✓'); } catch (e) { alert('No s\'ha pogut copiar.'); }
+  ta.remove();
+}
+
+function copyText(txt) {
+  txt = String(txt || '');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(function() { toast('Copiat ✓'); }, function() { fallbackCopy(txt); });
+  } else {
+    fallbackCopy(txt);
+  }
+}
+
+// ---------- Correu al jutjat: assistència telemàtica (WebEx) ----------
+var WX_MOTIUS = {
+  fora: 'el meu lloc de residència és fora de la ciutat de Barcelona i el desplaçament presencial em suposa una dificultat significativa',
+  metge: 'concorren motius mèdics que dificulten el meu desplaçament i la meva presència física a la seu judicial; si és necessari, puc aportar la documentació acreditativa',
+  altres: 'concorren motius personals degudament justificats que dificulten la meva presència física a la seu judicial; si és necessari, puc aportar la documentació acreditativa'
+};
+var wxSubject = '';
+
+function buildWebexMail(j, motiu, detall, sig) {
+  var data = j.fecha ? new Date(j.fecha + 'T00:00').toLocaleDateString('ca-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  var ref = [j.proc ? 'procediment ' + j.proc : '', j.expedient ? 'expedient ' + j.expedient : ''].filter(Boolean).join(', ');
+  var subject = 'Sol·licitud d\'assistència telemàtica'
+    + (j.proc ? ' - Procediment ' + j.proc : (j.expedient ? ' - Expedient ' + j.expedient : ''))
+    + (j.fecha ? ' - Judici ' + j.fecha.split('-').reverse().join('/') : '');
+  var body = 'Bon dia,\n\n'
+    + 'Em dirigeixo a aquest òrgan judicial' + (j.juzgado ? ' (' + j.juzgado + ')' : '')
+    + ' en relació amb la citació per comparèixer' + (j.qualitat ? (/^[aeiouàèéíòóúh]/i.test(String(j.qualitat).trim()) ? ' en qualitat d\'' : ' en qualitat de ') + String(j.qualitat).trim().toLowerCase() : '')
+    + (ref ? ' en el ' + ref : '') + (j.atestado ? ' (atestat ' + j.atestado + ')' : '')
+    + (data ? ', assenyalada per al dia ' + data + (j.hora ? ' a les ' + j.hora + ' hores' : '') + (j.sala ? ' (' + j.sala + ')' : '') : '') + '.\n\n'
+    + 'Per aquest motiu, sol·licito poder assistir-hi per videoconferència (plataforma WebEx o similar), atès que ' + (WX_MOTIUS[motiu] || WX_MOTIUS.altres) + '.'
+    + (detall && detall.trim() ? ' ' + detall.trim() : '') + '\n\n'
+    + 'Resto a la seva disposició per facilitar qualsevol dada addicional i per coordinar les dades de connexió.\n\n'
+    + 'Moltes gràcies.\n\nAtentament,' + (sig && sig.trim() ? '\n' + sig.trim() : '');
+  return { subject: subject, body: body };
+}
+
+function openWebexModal() {
+  collect();
+  var j = cur;
+  var map = {};
+  try { map = JSON.parse(localStorage.getItem('juicios_court_emails') || '{}'); } catch (e) {}
+  var key = normAtestat(j.juzgado);
+  var to = (key && map[key]) || '';
+  var sig = localStorage.getItem('juicios_signature') || '';
+  var motiu = localStorage.getItem('juicios_wx_motiu') || 'fora';
+  var old = $('#modalWebex');
+  if (old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = 'modalWebex';
+  ov.className = 'modal-overlay';
+  ov.innerHTML = '<div class="modal-card" style="max-height:92vh;overflow:auto">'
+    + '<button class="modal-close" onclick="closeWebexModal()">&times;</button>'
+    + '<h3 style="margin:4px 0 6px;font-size:18px">✉️ Assistència telemàtica</h3>'
+    + '<p class="mu" style="margin:0 0 6px">Prepara un correu al jutjat per sol·licitar assistir per videoconferència (WebEx).</p>'
+    + '<label>Correu del jutjat' + (j.juzgado ? ' (' + esc(j.juzgado) + ')' : '') + '</label><input id="wxTo" type="email" placeholder="jutjat@exemple.cat" value="' + esc(to) + '">'
+    + '<label>Motiu</label><select id="wxMotiu" onchange="wxRefresh()">'
+    + '<option value="fora"' + (motiu === 'fora' ? ' selected' : '') + '>Resideixo fora de Barcelona</option>'
+    + '<option value="metge"' + (motiu === 'metge' ? ' selected' : '') + '>Motius mèdics</option>'
+    + '<option value="altres"' + (motiu === 'altres' ? ' selected' : '') + '>Gestions o motius personals</option></select>'
+    + '<label>Detall addicional (opcional)</label><textarea id="wxDetall" style="min-height:56px" oninput="wxRefresh()"></textarea>'
+    + '<label>Signatura (nom, TIP, unitat…)</label><textarea id="wxSig" style="min-height:56px" oninput="wxRefresh()">' + esc(sig) + '</textarea>'
+    + '<label>Missatge (el pots editar)</label><textarea id="wxBody" style="min-height:230px"></textarea>'
+    + '<p class="mu" style="margin:6px 0 0">Assumpte: <span id="wxSubj"></span></p>'
+    + '<div class="bar"><button class="pri" onclick="wxSend()">✉️ Obrir al correu</button><button onclick="wxCopy()">📋 Copiar</button><button onclick="closeWebexModal()">Tancar</button></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  wxRefresh();
+}
+
+function closeWebexModal() {
+  var m = $('#modalWebex');
+  if (m) m.remove();
+}
+
+function wxRefresh() {
+  var mail = buildWebexMail(cur || {}, $('#wxMotiu').value, $('#wxDetall').value, $('#wxSig').value);
+  wxSubject = mail.subject;
+  $('#wxBody').value = mail.body;
+  $('#wxSubj').textContent = mail.subject;
+}
+
+function wxRememberPrefs() {
+  try {
+    localStorage.setItem('juicios_signature', $('#wxSig').value);
+    localStorage.setItem('juicios_wx_motiu', $('#wxMotiu').value);
+    var addr = $('#wxTo').value.trim();
+    var key = normAtestat(cur && cur.juzgado);
+    if (key && addr.indexOf('@') > 0) {
+      var map = {};
+      try { map = JSON.parse(localStorage.getItem('juicios_court_emails') || '{}'); } catch (e) {}
+      map[key] = addr;
+      localStorage.setItem('juicios_court_emails', JSON.stringify(map));
+    }
+  } catch (e) {}
+}
+
+function wxSend() {
+  wxRememberPrefs();
+  var addr = $('#wxTo').value.replace(/[;\s]+/g, ',').replace(/[^A-Za-z0-9@._,+\-]/g, '');
+  var url = 'mailto:' + addr + '?subject=' + encodeURIComponent(wxSubject) + '&body=' + encodeURIComponent($('#wxBody').value.replace(/\n/g, '\r\n'));
+  window.location.href = url;
+}
+
+function wxCopy() {
+  wxRememberPrefs();
+  copyText(wxSubject + '\n\n' + $('#wxBody').value);
 }
 
 function onAtestatChange() { collect(); offerMinute(); }
@@ -1238,6 +1407,7 @@ function render() {
   }
 
   if (view === 'minutes') { app.innerHTML = renderMinutesHTML(); return; }
+  if (view === 'minutaview') { app.innerHTML = renderMinutaReaderHTML(); return; }
 
   var j = cur;
   var v = function(k) { return esc(j[k] || ''); };
@@ -1262,7 +1432,7 @@ function render() {
 
   fHtml += '<label>Modalitat prevista</label><select id="modalidadPrev"><option value="presencial"' + (j.modalidadPrev !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidadPrev === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
   fHtml += '<label>Notes</label><textarea id="notas">' + v('notas') + '</textarea>';
-  fHtml += '<div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="' + esc(calUrl(j)) + '">📅 Afegir a Google Calendar</a></div>';
+  fHtml += '<div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="' + esc(calUrl(j)) + '">📅 Afegir a Google Calendar</a><button type="button" onclick="openWebexModal()">✉️ Sol·licitar assistència telemàtica</button></div>';
   fHtml += '<p class="mu">S\'obre Google Calendar amb l\'esdeveniment a punt per confirmar.</p></div>';
 
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Seguiment</h2>';
@@ -1275,6 +1445,7 @@ function render() {
   fHtml += '<label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '">';
 
   fHtml += '<label>Minuta policial</label><textarea id="minuta" placeholder="Enganxa aquí la minuta policial si l\'has aconseguit posteriorment…">' + v('minuta') + '</textarea>';
+  if ((j.minuta || '').trim()) fHtml += '<div class="bar" style="margin-top:6px"><button type="button" onclick="openMinutaReader()">📖 Llegir la minuta (vista de lectura)</button></div>';
   var mmatch = (j.atestado && !(j.minuta || '').trim()) ? findMinute(j.atestado) : null;
   if (mmatch) fHtml += '<div class="bar" style="margin-top:6px"><button type="button" class="pri" onclick="recoverMinuteBtn()">📥 Recuperar minuta de la bústia (atestat ' + esc(mmatch.atestado) + ')</button></div>';
   if (!(j.minuta || '').trim() && minutes.length) {
