@@ -475,6 +475,8 @@ function copyText(txt) {
 // ---------- Correu al jutjat: assistència telemàtica (WebEx) ----------
 var WX_MOTIUS = {
   fora: 'el meu lloc de residència és fora de la ciutat de Barcelona i el desplaçament presencial em suposa una dificultat significativa',
+  vacances: 'en la data assenyalada em trobo de vacances i fora de la ciutat de Barcelona; si és necessari, puc aportar la documentació acreditativa',
+  fora_dia: 'en la data assenyalada em trobo fora de la ciutat de Barcelona i no em és possible desplaçar-me a la seu judicial',
   metge: 'concorren motius mèdics que dificulten el meu desplaçament i la meva presència física a la seu judicial; si és necessari, puc aportar la documentació acreditativa',
   altres: 'concorren motius personals degudament justificats que dificulten la meva presència física a la seu judicial; si és necessari, puc aportar la documentació acreditativa'
 };
@@ -519,6 +521,8 @@ function openWebexModal() {
     + '<label>Correu del jutjat' + (j.juzgado ? ' (' + esc(j.juzgado) + ')' : '') + '</label><input id="wxTo" type="email" placeholder="jutjat@exemple.cat" value="' + esc(to) + '">'
     + '<label>Motiu</label><select id="wxMotiu" onchange="wxRefresh()">'
     + '<option value="fora"' + (motiu === 'fora' ? ' selected' : '') + '>Resideixo fora de Barcelona</option>'
+    + '<option value="vacances"' + (motiu === 'vacances' ? ' selected' : '') + '>Estic de vacances</option>'
+    + '<option value="fora_dia"' + (motiu === 'fora_dia' ? ' selected' : '') + '>Aquell dia sóc fora de Barcelona</option>'
     + '<option value="metge"' + (motiu === 'metge' ? ' selected' : '') + '>Motius mèdics</option>'
     + '<option value="altres"' + (motiu === 'altres' ? ' selected' : '') + '>Gestions o motius personals</option></select>'
     + '<label>Detall addicional (opcional)</label><textarea id="wxDetall" style="min-height:56px" oninput="wxRefresh()"></textarea>'
