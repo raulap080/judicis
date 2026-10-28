@@ -316,7 +316,7 @@ function detectAtestat(text) {
   return m ? m[1] : '';
 }
 
-function openMinutes() { view = 'minutes'; render(); window.scrollTo(0, 0); }
+function openMinutes() { view = 'minutes'; pushSub(); render(); window.scrollTo(0, 0); }
 
 function addMinute() {
   var at = $('#mAtestat').value.trim();
@@ -414,11 +414,15 @@ function openMinutaReader() {
   collect();
   if (!(cur.minuta || '').trim()) return;
   view = 'minutaview';
+  pushSub();
   render();
   window.scrollTo(0, 0);
 }
 
-function closeMinutaReader() { view = 'form'; render(); window.scrollTo(0, 0); }
+function closeMinutaReader() {
+  if (subDepth > 1) { history.back(); }
+  else { view = 'form'; render(); window.scrollTo(0, 0); }
+}
 
 function readerFont(d) {
   readerSize = Math.max(13, Math.min(28, readerSize + d));
@@ -506,7 +510,13 @@ function openWebexModal() {
   var map = {};
   try { map = JSON.parse(localStorage.getItem('juicios_court_emails') || '{}'); } catch (e) {}
   var key = normAtestat(j.juzgado);
-  var to = (key && map[key]) || '';
+  var to = '', src = '';
+  if ((j.emailJutjat || '').trim()) { to = j.emailJutjat.trim(); src = 'de la fitxa del judici'; }
+  else if (key && map[key]) { to = map[key]; src = 'recordat d\'altres vegades per a aquest jutjat'; }
+  else {
+    var other = items.filter(function(x) { return key && normAtestat(x.juzgado) === key && (x.emailJutjat || '').trim(); })[0];
+    if (other) { to = other.emailJutjat.trim(); src = 'd\'un altre judici d\'aquest jutjat'; }
+  }
   var sig = localStorage.getItem('juicios_signature') || '';
   var motiu = localStorage.getItem('juicios_wx_motiu') || 'fora';
   var old = $('#modalWebex');
@@ -519,6 +529,9 @@ function openWebexModal() {
     + '<h3 style="margin:4px 0 6px;font-size:18px">✉️ Assistència telemàtica</h3>'
     + '<p class="mu" style="margin:0 0 6px">Prepara un correu al jutjat per sol·licitar assistir per videoconferència (WebEx).</p>'
     + '<label>Correu del jutjat' + (j.juzgado ? ' (' + esc(j.juzgado) + ')' : '') + '</label><input id="wxTo" type="email" placeholder="jutjat@exemple.cat" value="' + esc(to) + '">'
+    + '<p class="mu" style="margin:4px 0 0">' + (to ? 'Suggeriment ' + src + '. Comprova que continua vigent.' : 'No tinc cap correu d\'aquest jutjat: busca\'l i escriu-lo; l\'app el recordarà.') + '</p>'
+    + '<div class="row" style="margin-top:6px"><a class="btn" target="_blank" rel="noopener" href="https://justicia.gencat.cat/ca/ambits/administracio-de-justicia/directori-seus/">📖 Directori de seus judicials</a>'
+    + (j.juzgado ? '<a class="btn" target="_blank" rel="noopener" href="https://www.google.com/search?q=' + encodeURIComponent('correu electrònic ' + j.juzgado) + '">🔎 Cercar el correu</a>' : '') + '</div>'
     + '<label>Motiu</label><select id="wxMotiu" onchange="wxRefresh()">'
     + '<option value="fora"' + (motiu === 'fora' ? ' selected' : '') + '>Resideixo fora de Barcelona</option>'
     + '<option value="vacances"' + (motiu === 'vacances' ? ' selected' : '') + '>Estic de vacances</option>'
@@ -552,6 +565,7 @@ function wxRememberPrefs() {
     localStorage.setItem('juicios_signature', $('#wxSig').value);
     localStorage.setItem('juicios_wx_motiu', $('#wxMotiu').value);
     var addr = $('#wxTo').value.trim();
+    if (addr.indexOf('@') > 0 && cur) { cur.emailJutjat = addr; var ef = $('#emailJutjat'); if (ef) ef.value = addr; }
     var key = normAtestat(cur && cur.juzgado);
     if (key && addr.indexOf('@') > 0) {
       var map = {};
@@ -932,6 +946,7 @@ async function saveToDrive(silent) {
 
 // ---------- CRUD ----------
 function save(j) {
+  if (cur && j && j.id === cur.id && view === 'form') formSnapshot = snapshotOf(j);
   var i = items.findIndex(function(x) { return x.id === j.id; });
   if (i < 0) { items.push(Object.assign({}, j)); } else { items[i] = Object.assign({}, j); }
   lsWrite();
@@ -1420,7 +1435,7 @@ function render() {
   var isCelebrado = (j.celebrado === 'si');
   var dayInfo = j.fecha ? getDayCobroInfo(j.fecha) : { isDouble: false };
 
-  var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="back()">Tancar</button></h1>';
+  var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="requestCloseForm()">Tancar</button></h1>';
   fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>';
   if (isNew) {
     fHtml += '<label>Enganxar la citació o minuta (omple els camps automàticament)</label><textarea id="paste" placeholder="Enganxa aquí el text de la citació o de la minuta…"></textarea><div class="bar" style="margin-top:6px"><button onclick="parsePaste()">Omplir des del text</button></div>';
@@ -1429,6 +1444,7 @@ function render() {
   fHtml += '<div class="g2"><div><label>Procediment</label><input id="proc" value="' + v('proc') + '"></div><div><label>Atestat</label><input id="atestado" value="' + v('atestado') + '" onchange="onAtestatChange()"></div></div>';
   fHtml += '<label>Òrgan jurisdiccional</label><input id="juzgado" value="' + v('juzgado') + '">';
   fHtml += '<label>Adreça</label><input id="adreca" value="' + v('adreca') + '">';
+  fHtml += '<label>Correu del jutjat (opcional)</label><input id="emailJutjat" type="email" value="' + v('emailJutjat') + '">';
   fHtml += '<div class="g2"><div><label>Telèfon</label><input id="telefon" type="tel" value="' + v('telefon') + '"></div><div><label>Fax</label><input id="fax" type="tel" value="' + v('fax') + '"></div></div>';
   fHtml += '<div class="g2"><div><label>Qualitat de la compareixença</label><input id="qualitat" value="' + v('qualitat') + '"></div><div><label>Sala</label><input id="sala" value="' + v('sala') + '"></div></div>';
   fHtml += '<label>Objecte de la compareixença</label><input id="objecte" value="' + v('objecte') + '">';
@@ -1511,7 +1527,7 @@ function onCelebradoChange(val) {
   render();
 }
 
-var F = ['expedient','proc','atestado','juzgado','adreca','fax','telefon','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'];
+var F = ['expedient','proc','atestado','juzgado','adreca','fax','telefon','emailJutjat','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'];
 var C = ['justificante','dad67','cobrado'];
 
 function collect() {
@@ -1686,6 +1702,8 @@ function parsePaste() {
   st('adreca', g(/Adre[çc]a:?\s*([^\n]+)/i));
   st('fax', g(/Fax:?\s*([^\n]+)/i));
   st('telefon', g(/Tel[èe]fon:?\s*([^\n]+)/i));
+  var emailsFound = (t.match(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}/g) || []).filter(function(e, i, a) { return a.indexOf(e) === i; });
+  if (emailsFound.length === 1) st('emailJutjat', emailsFound[0]);
 
   var d = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})[ \t]*([^\n]*)/);
   if (d) {
@@ -1721,17 +1739,89 @@ function edit(id) {
     cur = { id: 'j' + Date.now().toString(36), files: [] };
   }
   view = 'form';
+  pushSub();
   render();
+  collect();
+  formSnapshot = snapshotOf(cur);
   window.scrollTo(0, 0);
 }
 
-function back() {
+// ---------- Canvis sense desar i navegació (inclou el botó enrere d'Android) ----------
+var formSnapshot = '';
+var subDepth = 0;
+var leaving = false;
+
+function snapshotOf(o) {
+  var out = {};
+  F.forEach(function(k) { out[k] = (o && o[k]) ? String(o[k]) : ''; });
+  C.forEach(function(k) { out[k] = !!(o && o[k]); });
+  return JSON.stringify(out);
+}
+
+function isFormDirty() {
+  if (!cur) return false;
+  collect();
+  return snapshotOf(cur) !== formSnapshot;
+}
+
+function pushSub() {
+  try { history.pushState({ juicios: 1 }, ''); subDepth++; } catch (e) {}
+}
+
+function leaveSub() {
+  if (subDepth > 0) {
+    leaving = true;
+    history.back();
+    setTimeout(function() { if (leaving) { leaving = false; subDepth = 0; doBack(); } }, 400);
+  } else {
+    doBack();
+  }
+}
+
+function requestCloseForm() {
+  if (isFormDirty()) askSaveBeforeLeave(); else leaveSub();
+}
+
+function closeLeaveModal() {
+  var m = $('#modalLeave');
+  if (m) m.remove();
+}
+
+function askSaveBeforeLeave() {
+  closeLeaveModal();
+  var ov = document.createElement('div');
+  ov.id = 'modalLeave';
+  ov.className = 'modal-overlay';
+  ov.innerHTML = '<div class="modal-card"><h3 style="margin:4px 0 8px;font-size:18px">Canvis sense desar</h3>'
+    + '<p class="mu" style="font-size:14px">Has fet canvis en aquest judici que encara no s\'han desat. Què vols fer?</p>'
+    + '<div class="bar"><button class="pri" onclick="leaveSave()">💾 Desar i sortir</button><button class="dan" onclick="leaveDiscard()">Sortir sense desar</button><button onclick="closeLeaveModal()">Continuar editant</button></div></div>';
+  document.body.appendChild(ov);
+}
+
+function leaveSave() { closeLeaveModal(); sv(); }
+function leaveDiscard() { closeLeaveModal(); leaveSub(); }
+
+function back() { leaveSub(); }
+
+function doBack() {
   view = localStorage.getItem('juicios_view') || 'calendar';
   if (view !== 'calendar' && view !== 'list') view = 'calendar';
   cur = null;
   pendingMinuteId = null;
   render();
 }
+
+window.addEventListener('popstate', function() {
+  if (subDepth > 0) subDepth--;
+  if (leaving) { leaving = false; doBack(); return; }
+  if ($('#modalWebex') || $('#modalLeave')) { closeWebexModal(); closeLeaveModal(); pushSub(); return; }
+  if (view === 'minutaview') { view = 'form'; render(); window.scrollTo(0, 0); }
+  else if (view === 'form') {
+    if (isFormDirty()) { pushSub(); askSaveBeforeLeave(); } else doBack();
+  } else if (view === 'minutes') {
+    doBack();
+  }
+});
 
 window.addEventListener('click', function(e) {
   var m = $('#modalDrive');
