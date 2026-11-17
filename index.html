@@ -6,8 +6,8 @@
 <title>Registre de judicis</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%231f4e9c'/><path d='M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='130' r='30' fill='%2358c58a'/></svg>">
 <style>
-:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e;--double:#8e24aa;--festa-bg:rgba(88,197,138,0.18);--festa-tx:#1b7a43;--treball-bg:rgba(31,78,156,0.12);--treball-tx:#1f4e9c;--cal-tx:#fff;--c-fut:#1f4e9c;--c-rev:#677284;--c-nojus:#d9622b;--c-nodad:#a67c00;--c-dad:#00796b;--c-pag:#1b7a43;--c-sus:#b3261e}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f;--double:#ba68c8;--festa-bg:rgba(88,197,138,0.22);--festa-tx:#58c58a;--treball-bg:rgba(122,167,236,0.2);--treball-tx:#7aa7ec;--cal-tx:#10141a;--c-fut:#7aa7ec;--c-rev:#93a0b3;--c-nojus:#ff9b6a;--c-nodad:#e6c14a;--c-dad:#4db6ac;--c-pag:#58c58a;--c-sus:#f2877f}}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e;--double:#8e24aa;--festa-bg:rgba(88,197,138,0.18);--festa-tx:#1b7a43;--treball-bg:rgba(31,78,156,0.12);--treball-tx:#1f4e9c;--cal-tx:#fff;--c-fut:#1f4e9c;--c-rev:#677284;--c-nojus:#e8590c;--c-nodad:#f2c200;--c-dad:#00acc1;--c-pag:#2e7d32;--c-sus:#b3261e;--tg-nojus:#c2410c;--tg-nodad:#8a6d00;--tg-dad:#00838f}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f;--double:#ba68c8;--festa-bg:rgba(88,197,138,0.22);--festa-tx:#58c58a;--treball-bg:rgba(122,167,236,0.2);--treball-tx:#7aa7ec;--cal-tx:#10141a;--c-fut:#7aa7ec;--c-rev:#93a0b3;--c-nojus:#ff8a50;--c-nodad:#ffd83d;--c-dad:#4dd0e1;--c-pag:#66bb6a;--c-sus:#f2877f;--tg-nojus:#ff8a50;--tg-nodad:#ffd83d;--tg-dad:#4dd0e1}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow-x:hidden}
 main{max-width:720px;margin:0 auto;padding:12px;width:100%}
@@ -101,9 +101,10 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .dot.double-cobro{background:var(--double)}
 .tag.s-fut{color:var(--c-fut);border-color:var(--c-fut)}
 .tag.s-rev{color:var(--c-rev);border-color:var(--c-rev)}
-.tag.s-nojus{color:var(--c-nojus);border-color:var(--c-nojus)}
-.tag.s-nodad{color:var(--c-nodad);border-color:var(--c-nodad)}
-.tag.s-dad{color:var(--c-dad);border-color:var(--c-dad)}
+.tag.s-nojus{color:var(--tg-nojus);border-color:var(--tg-nojus)}
+.tag.s-nodad{color:var(--tg-nodad);border-color:var(--tg-nodad)}
+.tag.s-dad{color:var(--tg-dad);border-color:var(--tg-dad)}
+.cal-event.s-nodad,.cal-event.s-dad{color:#10141a}
 .tag.s-pag{color:var(--c-pag);border-color:var(--c-pag)}
 .tag.s-sus{color:var(--c-sus);border-color:var(--c-sus)}
 .cal-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:11px;color:var(--mu)}
@@ -1009,6 +1010,36 @@ function status(j) {
   return [STATE_INFO[k], 's-' + k];
 }
 
+// Filtre per estat: el mateix per al calendari i per al llistat
+var FILTER_KEYS = {
+  pend: ['fut', 'rev'], fut: ['fut'], rev: ['rev'],
+  dad: ['nojus', 'nodad'], nojus: ['nojus'], nodad: ['nodad'],
+  cobro: ['dad'], pag: ['pag'], sus: ['sus']
+};
+var FILTER_OPTIONS = [
+  ['todos', 'Tots'],
+  ['pend', 'Pendents de celebrar (futurs i per marcar)'],
+  ['fut', 'Només futurs'],
+  ['rev', 'Per marcar (data passada)'],
+  ['dad', 'Celebrats sense DAD 67'],
+  ['nojus', 'Celebrats sense justificant'],
+  ['nodad', 'Amb justificant, sense DAD 67'],
+  ['cobro', 'Pendents de cobrament (DAD presentada)'],
+  ['pag', 'Cobrats'],
+  ['sus', 'Suspesos']
+];
+
+function matchesFilter(j) {
+  if (filter === 'todos' || !FILTER_KEYS[filter]) return true;
+  return FILTER_KEYS[filter].indexOf(stateKey(j)) !== -1;
+}
+
+function filterOptionsHTML() {
+  return FILTER_OPTIONS.map(function(o) {
+    return '<option value="' + o[0] + '"' + (filter === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+  }).join('');
+}
+
 function timeToMinutes(tStr) {
   if (!tStr) return null;
   var p = String(tStr).split(':');
@@ -1209,10 +1240,7 @@ function getFilteredList() {
     if (sortBy === 'proximos' && filter === 'todos') {
       if (!j.fecha || j.fecha < todayStr) return false;
     }
-    if (filter === 'pend') return j.celebrado !== 'si' && j.celebrado !== 'no' && j.celebrado !== 'suspendido';
-    if (filter === 'dad') return j.celebrado === 'si' && !j.dad67;
-    if (filter === 'cobro') return j.celebrado === 'si' && j.dad67 && !j.cobrado;
-    return true;
+    return matchesFilter(j);
   }).sort(function(a, b) {
     if (sortBy === 'proximos' || sortBy === 'fecha_asc') return ((a.fecha || '') + (a.hora || '')).localeCompare((b.fecha || '') + (b.hora || ''));
     if (sortBy === 'fecha_desc') return ((b.fecha || '') + (b.hora || '')).localeCompare((a.fecha || '') + (a.hora || ''));
@@ -1314,8 +1342,9 @@ function renderCalendar() {
     var dateKey = year + '-' + mStr + '-' + dStr;
     var isToday = dateKey === todayStr;
 
-    var dayEvents = items.filter(function(j) { return j.fecha === dateKey; });
-    dayEvents.sort(function(a, b) { return (a.hora || '').localeCompare(b.hora || ''); });
+    var allDay = items.filter(function(j) { return j.fecha === dateKey; });
+    allDay.sort(function(a, b) { return (a.hora || '').localeCompare(b.hora || ''); });
+    var dayEvents = allDay.filter(matchesFilter);
     var dayInfo = getDayCobroInfo(dateKey);
     var shiftInfo = selectedQuadrant ? getShiftForDate(selectedQuadrant, dateKey) : null;
 
@@ -1334,7 +1363,7 @@ function renderCalendar() {
 
     dayEvents.forEach(function(j, idx) {
       var st = status(j);
-      var isSecondCobro = (dayInfo.isDouble && idx > 0);
+      var isSecondCobro = (dayInfo.isDouble && allDay.indexOf(j) > 0);
       var extraClass = isSecondCobro ? ' double-cobro' : (' ' + st[1]);
       var label = (j.hora ? j.hora + ' ' : '') + (j.proc || j.objecte || 'Judici') + (isSecondCobro ? ' (2n cobram.)' : '');
       html += '<div class="cal-event' + extraClass + '" title="' + esc(label) + '" onclick="event.stopPropagation();edit(\'' + j.id + '\')">' + esc(label) + '</div>';
@@ -1398,6 +1427,7 @@ function render() {
     html += '</div>';
 
     if (view === 'calendar') {
+      html += '<div class="quadrant-box"><span>🎯</span><label for="calFilter">Filtrar:</label><select id="calFilter" onchange="setFilter(this.value)" style="flex:1;min-width:0">' + filterOptionsHTML() + '</select></div>';
       html += renderCalendar();
     } else {
       html += '<div class="search-box">';
@@ -1408,12 +1438,7 @@ function render() {
 
       html += '<div class="g2" style="margin-bottom:8px">';
       html += '<div><label style="margin:0 0 2px 2px">Filtrar</label>';
-      html += '<select onchange="setFilter(this.value)">';
-      html += '<option value="todos"' + (filter === 'todos' ? ' selected' : '') + '>Tots</option>';
-      html += '<option value="pend"' + (filter === 'pend' ? ' selected' : '') + '>Pendents de celebrar</option>';
-      html += '<option value="dad"' + (filter === 'dad' ? ' selected' : '') + '>Celebrats sense DAD 67</option>';
-      html += '<option value="cobro"' + (filter === 'cobro' ? ' selected' : '') + '>Pendents de cobrament (amb DAD 67)</option>';
-      html += '</select></div>';
+      html += '<select onchange="setFilter(this.value)">' + filterOptionsHTML() + '</select></div>';
 
       html += '<div><label style="margin:0 0 2px 2px">Ordenar per</label>';
       html += '<select onchange="setSort(this.value)">';
