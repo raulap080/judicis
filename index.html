@@ -6,8 +6,8 @@
 <title>Registre de judicis</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%231f4e9c'/><path d='M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='130' r='30' fill='%2358c58a'/></svg>">
 <style>
-:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e;--double:#8e24aa;--festa-bg:rgba(88,197,138,0.18);--festa-tx:#1b7a43;--treball-bg:rgba(31,78,156,0.12);--treball-tx:#1f4e9c}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f;--double:#ba68c8;--festa-bg:rgba(88,197,138,0.22);--festa-tx:#58c58a;--treball-bg:rgba(122,167,236,0.2);--treball-tx:#7aa7ec}}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e;--double:#8e24aa;--festa-bg:rgba(88,197,138,0.18);--festa-tx:#1b7a43;--treball-bg:rgba(31,78,156,0.12);--treball-tx:#1f4e9c;--cal-tx:#fff;--c-fut:#1f4e9c;--c-rev:#677284;--c-nojus:#d9622b;--c-nodad:#a67c00;--c-dad:#00796b;--c-pag:#1b7a43;--c-sus:#b3261e}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f;--double:#ba68c8;--festa-bg:rgba(88,197,138,0.22);--festa-tx:#58c58a;--treball-bg:rgba(122,167,236,0.2);--treball-tx:#7aa7ec;--cal-tx:#10141a;--c-fut:#7aa7ec;--c-rev:#93a0b3;--c-nojus:#ff9b6a;--c-nodad:#e6c14a;--c-dad:#4db6ac;--c-pag:#58c58a;--c-sus:#f2877f}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow-x:hidden}
 main{max-width:720px;margin:0 auto;padding:12px;width:100%}
@@ -68,7 +68,7 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 .cal-day.day-treball .cal-day-badge{color:var(--treball-tx);background:rgba(31,78,156,0.2)}
 .cal-day-num{font-weight:bold;font-size:11px;color:var(--mu)}
 .cal-day.today .cal-day-num{color:var(--ac)}
-.cal-event{background:var(--ac);color:#fff;border-radius:3px;padding:2px 3px;font-size:9px;line-height:1.2;margin-bottom:2px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border:none;text-align:left}
+.cal-event{background:var(--ac);color:var(--cal-tx);border-radius:3px;padding:2px 3px;font-size:9px;line-height:1.2;margin-bottom:2px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border:none;text-align:left}
 .cal-event.er{background:var(--er)}
 .cal-event.ok{background:var(--ok)}
 .cal-event.wa{background:var(--wa)}
@@ -90,6 +90,26 @@ h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd
 
 /* Avís discret */
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1b2430;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;z-index:1000;display:none;max-width:90%;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+/* Estats dels judicis (calendari, etiquetes i llegenda) */
+.cal-event.s-fut,.dot.s-fut{background:var(--c-fut)}
+.cal-event.s-rev,.dot.s-rev{background:var(--c-rev)}
+.cal-event.s-nojus,.dot.s-nojus{background:var(--c-nojus)}
+.cal-event.s-nodad,.dot.s-nodad{background:var(--c-nodad)}
+.cal-event.s-dad,.dot.s-dad{background:var(--c-dad)}
+.cal-event.s-pag,.dot.s-pag{background:var(--c-pag)}
+.cal-event.s-sus,.dot.s-sus{background:var(--c-sus)}
+.dot.double-cobro{background:var(--double)}
+.tag.s-fut{color:var(--c-fut);border-color:var(--c-fut)}
+.tag.s-rev{color:var(--c-rev);border-color:var(--c-rev)}
+.tag.s-nojus{color:var(--c-nojus);border-color:var(--c-nojus)}
+.tag.s-nodad{color:var(--c-nodad);border-color:var(--c-nodad)}
+.tag.s-dad{color:var(--c-dad);border-color:var(--c-dad)}
+.tag.s-pag{color:var(--c-pag);border-color:var(--c-pag)}
+.tag.s-sus{color:var(--c-sus);border-color:var(--c-sus)}
+.cal-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:11px;color:var(--mu)}
+.lg{display:inline-flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+
 /* Lector de minuta */
 .reader{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;line-height:1.65}
 .rd-p{margin:0 0 8px}
@@ -964,12 +984,29 @@ function remove(id) {
   lsWrite();
 }
 
+// Estat del judici (determina el color al calendari i a la llista)
+var STATE_INFO = {
+  fut: 'Pendent (futur)',
+  rev: 'Pendent de marcar (data passada)',
+  nojus: 'Celebrat · falta justificant',
+  nodad: 'Celebrat · falta DAD 67',
+  dad: 'DAD 67 presentada · pendent de cobrament',
+  pag: 'Cobrat',
+  sus: 'Suspès'
+};
+var STATE_LEGEND = { fut: 'Futur', rev: 'Per marcar', nojus: 'Sense justificant', nodad: 'Sense DAD 67', dad: 'DAD presentada', pag: 'Cobrat', sus: 'Suspès' };
+
+function stateKey(j) {
+  if (j.celebrado === 'no' || j.celebrado === 'suspendido') return 'sus';
+  if (j.celebrado !== 'si') return (j.fecha && j.fecha < localDateStr()) ? 'rev' : 'fut';
+  if (j.cobrado) return 'pag';
+  if (j.dad67) return 'dad';
+  return j.justificante ? 'nodad' : 'nojus';
+}
+
 function status(j) {
-  if (j.celebrado === 'no' || j.celebrado === 'suspendido') return ['Suspès', 'er'];
-  if (j.celebrado !== 'si') return ['Pendent', 'wa'];
-  if (j.cobrado) return ['Cobrat', 'ok'];
-  if (j.dad67) return ['DAD 67 presentada · Pendent cobrament', 'wa'];
-  return ['Celebrat · falta DAD 67', 'wa'];
+  var k = stateKey(j);
+  return [STATE_INFO[k], 's-' + k];
 }
 
 function timeToMinutes(tStr) {
@@ -1312,7 +1349,13 @@ function renderCalendar() {
     html += '<div class="cal-day other-month"><span class="cal-day-num">' + n + '</span></div>';
   }
 
-  html += '</div></div></div>';
+  html += '</div></div>';
+  html += '<div class="cal-legend">';
+  ['fut', 'rev', 'nojus', 'nodad', 'dad', 'pag', 'sus'].forEach(function(k) {
+    html += '<span class="lg"><i class="dot s-' + k + '"></i>' + STATE_LEGEND[k] + '</span>';
+  });
+  html += '<span class="lg"><i class="dot double-cobro"></i>2n cobrament (&gt;3h)</span></div>';
+  html += '</div>';
   return html;
 }
 
