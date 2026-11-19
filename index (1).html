@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Registre de judicis</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='%231f4e9c'/><path d='M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='130' r='30' fill='%2358c58a'/></svg>">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mu:#677284;--bd:#d9dee6;--ac:#1f4e9c;--ok:#1b7a43;--wa:#b26a00;--er:#b3261e;--double:#8e24aa;--festa-bg:rgba(88,197,138,0.18);--festa-tx:#1b7a43;--treball-bg:rgba(31,78,156,0.12);--treball-tx:#1f4e9c;--cal-tx:#fff;--c-fut:#1f4e9c;--c-rev:#677284;--c-nojus:#e8590c;--c-nodad:#f2c200;--c-dad:#00acc1;--c-pag:#2e7d32;--c-sus:#b3261e;--tg-nojus:#c2410c;--tg-nodad:#8a6d00;--tg-dad:#00838f;--star:#d99a00}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141a;--card:#1a2029;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3644;--ac:#7aa7ec;--ok:#58c58a;--wa:#e5a64a;--er:#f2877f;--double:#ba68c8;--festa-bg:rgba(88,197,138,0.22);--festa-tx:#58c58a;--treball-bg:rgba(122,167,236,0.2);--treball-tx:#7aa7ec;--cal-tx:#10141a;--c-fut:#7aa7ec;--c-rev:#93a0b3;--c-nojus:#ff8a50;--c-nodad:#ffd83d;--c-dad:#4dd0e1;--c-pag:#66bb6a;--c-sus:#f2877f;--tg-nojus:#ff8a50;--tg-nodad:#ffd83d;--tg-dad:#4dd0e1;--star:#f2b01e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow-x:hidden}
+main{max-width:720px;margin:0 auto;padding:12px;width:100%}
+h1{font-size:20px;margin:4px 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:36px;height:36px;border-radius:99px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-icon svg{width:22px;height:22px;display:block}
+button,.btn,.btn-label{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 12px;border-radius:99px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+button:disabled{opacity:0.5;cursor:not-allowed}
+.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+.dan{color:var(--er)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px;width:100%}
+.item{cursor:pointer}.item b{display:block}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mu)}
+.ok{color:var(--ok);border-color:var(--ok)}.wa{color:var(--wa);border-color:var(--wa)}.er{color:var(--er);border-color:var(--er)}.double-tag{color:var(--double);border-color:var(--double);font-weight:bold}
+label{display:block;font-size:13px;color:var(--mu);margin:10px 0 3px}
+input,select,textarea{width:100%;font:inherit;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+textarea{min-height:80px;resize:vertical}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chk{display:flex;align-items:center;gap:8px;margin:10px 0 0;color:var(--tx);font-size:15px}
+.chk input{width:auto}
+.chk.disabled{opacity:0.5;cursor:not-allowed}
+h2{font-size:15px;margin:18px 0 0;padding-top:12px;border-top:1px solid var(--bd)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.mu{color:var(--mu);font-size:13px}
+
+/* Cercador minimalista */
+.search-box{position:relative;margin-bottom:10px}
+.search-box input{padding-left:32px;padding-right:30px;border-radius:99px;font-size:14px}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--mu);pointer-events:none}
+.search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;padding:0;font-size:16px;color:var(--mu);cursor:pointer;line-height:1}
+
+/* Selector de Vistes */
+.view-switcher{display:flex;background:var(--bd);padding:3px;border-radius:99px;gap:2px}
+.view-btn{border:none;background:none;padding:6px 12px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;color:var(--mu)}
+.view-btn.active{background:var(--card);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+
+/* Selector de Quadrant */
+.quadrant-box{display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--card);padding:8px 12px;border-radius:12px;border:1px solid var(--bd)}
+.quadrant-box label{margin:0;font-weight:500;white-space:nowrap;font-size:13px;color:var(--tx)}
+.quadrant-box select{padding:5px 8px;font-size:13px;border-radius:6px}
+
+/* Calendari Adaptat */
+.cal-wrapper{width:100%;overflow-x:auto}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-title{font-weight:bold;font-size:15px;text-transform:capitalize}
+.cal-grid{display:grid;grid-template-columns:repeat(7, 1fr);gap:3px;min-width:300px}
+.cal-day-name{font-size:11px;font-weight:bold;color:var(--mu);padding:4px 0;text-align:center}
+.cal-day{background:var(--bg);border:1px solid var(--bd);border-radius:6px;min-height:64px;padding:3px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;font-size:11px;overflow:hidden}
+.cal-day.other-month{opacity:0.3;background:none}
+.cal-day.today{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
+.cal-day.day-festa{background:var(--festa-bg);border-color:rgba(88,197,138,0.4)}
+.cal-day.day-treball{background:var(--treball-bg);border-color:rgba(31,78,156,0.3)}
+.cal-day-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;padding:0 2px}
+.cal-day-badge{font-size:9px;font-weight:bold;border-radius:3px;padding:0 3px}
+.cal-day.day-festa .cal-day-badge{color:var(--festa-tx);background:rgba(88,197,138,0.25)}
+.cal-day.day-treball .cal-day-badge{color:var(--treball-tx);background:rgba(31,78,156,0.2)}
+.cal-day-num{font-weight:bold;font-size:11px;color:var(--mu)}
+.cal-day.today .cal-day-num{color:var(--ac)}
+.cal-event{background:var(--ac);color:var(--cal-tx);border-radius:3px;padding:2px 3px;font-size:9px;line-height:1.2;margin-bottom:2px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border:none;text-align:left}
+.cal-event.er{background:var(--er)}
+.cal-event.ok{background:var(--ok)}
+.cal-event.wa{background:var(--wa)}
+.cal-event.double-cobro{background:var(--double)!important;font-weight:bold}
+
+/* Paginació */
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0}
+.pagination-info{font-size:13px;color:var(--mu)}
+
+/* Modal Google Drive */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:14px}
+.modal-card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:20px;max-width:480px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,0.2);position:relative}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;color:var(--mu);cursor:pointer;padding:4px}
+.badge-test{display:inline-block;background:var(--wa);color:#fff;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:99px;margin-bottom:8px}
+.info-box{background:var(--bg);border-left:4px solid var(--ac);padding:12px;border-radius:6px;margin:14px 0}
+.info-box.double{border-left-color:var(--double);background:rgba(142,36,170,0.08)}
+.info-box.warning{border-left-color:var(--wa);background:rgba(229,166,74,0.12)}
+.btn-sol{display:inline-block;background:var(--ac);color:#fff;text-decoration:none;padding:10px 16px;border-radius:99px;font-weight:500;margin-top:8px;text-align:center}
+
+/* Avís discret */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1b2430;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;z-index:1000;display:none;max-width:90%;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+/* Estats dels judicis (calendari, etiquetes i llegenda) */
+.cal-event.s-fut,.dot.s-fut{background:var(--c-fut)}
+.cal-event.s-rev,.dot.s-rev{background:var(--c-rev)}
+.cal-event.s-nojus,.dot.s-nojus{background:var(--c-nojus)}
+.cal-event.s-nodad,.dot.s-nodad{background:var(--c-nodad)}
+.cal-event.s-dad,.dot.s-dad{background:var(--c-dad)}
+.cal-event.s-pag,.dot.s-pag{background:var(--c-pag)}
+.cal-event.s-sus,.dot.s-sus{background:var(--c-sus)}
+.dot.double-cobro{background:var(--double)}
+.tag.s-fut{color:var(--c-fut);border-color:var(--c-fut)}
+.tag.s-rev{color:var(--c-rev);border-color:var(--c-rev)}
+.tag.s-nojus{color:var(--tg-nojus);border-color:var(--tg-nojus)}
+.tag.s-nodad{color:var(--tg-nodad);border-color:var(--tg-nodad)}
+.tag.s-dad{color:var(--tg-dad);border-color:var(--tg-dad)}
+.cal-event.s-nodad,.cal-event.s-dad{color:#10141a}
+.tag.s-pag{color:var(--c-pag);border-color:var(--c-pag)}
+.tag.s-sus{color:var(--c-sus);border-color:var(--c-sus)}
+.cal-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:11px;color:var(--mu)}
+.lg{display:inline-flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+/* Valoració de jutjats */
+.star-btn{border:none;background:none;font-size:34px;line-height:1;padding:2px 4px;cursor:pointer;color:var(--bd)}
+.star-btn.on{color:var(--star)}
+.tag.s-star{color:var(--star);border-color:var(--star)}
+
+/* Lector de minuta */
+.reader{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;line-height:1.65}
+.rd-p{margin:0 0 8px}
+.rd-h{margin:16px 0 6px;font-weight:700}
+.rd-bullet{margin:0 0 8px;padding-left:18px;position:relative}
+.rd-bullet::before{content:'\2022';position:absolute;left:4px}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<main id="app"></main>
+
+<!-- Modal d'informació Google Drive -->
+<div id="modalDrive" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <button class="modal-close" onclick="tancarModalDrive()">&times;</button>
+    <span class="badge-test">Fase de proves (Testing)</span>
+    <h3 style="margin:4px 0 10px;font-size:18px">☁️ Còpies de seguretat a Google Drive</h3>
+    <p class="mu" style="font-size:14px;line-height:1.5">
+      La sincronització automàtica amb Google Drive es troba en fase de proves reduïda.
+      Per poder utilitzar aquesta funció, cal que el teu compte de Google estigui donat d'alta com a usuari autoritzat.
+    </p>
+
+    <div class="info-box">
+      <b style="font-size:14px;display:block">Vols activar la sincronització?</b>
+      <p class="mu" style="margin:4px 0 8px">Envia una sol·licitud indicant el teu correu de Google i t'afegirem com a usuari de prova.</p>
+      <a href="mailto:raulap@gmail.com?subject=Sol%C2%B7licitud%20acc%C3%A9s%20Google%20Drive%20-%20Registre%20de%20Judicis&body=Hola,%20m'agradaria%20sol%C2%B7licitar%20acc%C3%A9s%20per%20a%20les%20c%C3%B2pies%20de%20seguretat%20de%20Google%20Drive.%20El%20meu%20correu%20de%20Google%20%C3%A9s:%20" class="btn-sol">
+        ✉️ Sol·licitar accés a raulap@gmail.com
+      </a>
+    </div>
+
+    <p class="mu" style="font-size:12px;margin:12px 0 16px">
+      * Un cop afegit el teu correu (en 24-48 hores), podràs connectar el teu compte. Si en iniciar sessió veus un avís de Google, prem a <i>«Avançat»</i> i després a <i>«Anar a Registre de Judicis»</i>.
+    </p>
+
+    <div style="text-align:right">
+      <button onclick="tancarModalDrive()">Tancar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var CLIENT_ID = '852546102283-2mke6uvb0ag7fajiu1s52s6aojru6c7n.apps.googleusercontent.com';
+var SCOPES = 'https://www.googleapis.com/auth/drive.file';
+var DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
+var UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files';
+var BACKUP_NAME = 'judicis_backup.json';
+var REF_DATE = '2026-02-02'; // Dilluns de referència del 7x7
+
+var items = [];
+var view = localStorage.getItem('juicios_view') || 'calendar';
+if (view !== 'calendar' && view !== 'list') view = 'calendar';
+var selectedQuadrant = localStorage.getItem('juicios_quadrant') || '';
+var cur = null;
+var minutes = [];            // bústia de minutes pendents
+var pendingMinuteId = null;  // minuta recuperada, es treu de la bústia en desar el judici
+var declinedAtestats = {};   // atestats pels quals s'ha dit «no» durant aquesta sessió
+var courts = {};             // valoracions i comentaris per jutjat
+var courtName = '';
+var courtFrom = 'courts';
+var courtPushed = false;
+var courtQuery = '';
+
+var filter = localStorage.getItem('juicios_filter') || 'todos';
+var sortBy = localStorage.getItem('juicios_sort') || 'proximos';
+var searchQuery = '';
+
+var calDate = new Date();
+var currentPage = 1;
+var pageSize = 10;
+var tokenClient = null;
+var accessToken = null;
+var tokenExp = 0;
+
+// El token de Drive només viu a la sessió de la pestanya i amb caducitat
+(function() {
+  try {
+    var t = JSON.parse(sessionStorage.getItem('gdrive_tok') || 'null');
+    if (t && t.exp > Date.now()) { accessToken = t.v; tokenExp = t.exp; }
+    localStorage.removeItem('gdrive_token'); // neteja de la versió antiga
+  } catch (e) {}
+})();
+
+function $(s) { return document.querySelector(s); }
+
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function fmt(d) {
+  if (!d) return '';
+  return new Date(d + 'T00:00').toLocaleDateString('ca-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// Data local en format YYYY-MM-DD (no UTC)
+function localDateStr(dt) {
+  dt = dt || new Date();
+  return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+}
+
+function toast(msg) {
+  var t = $('#toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._h);
+  t._h = setTimeout(function() { t.style.display = 'none'; }, 3800);
+}
+
+// ---------- Dades i neteja ----------
+function cleanFile(f) {
+  if (!f || typeof f !== 'object') return null;
+  var name = String(f.name || 'fitxer');
+  if (f.link) {
+    var u = String(f.url || '');
+    return /^https?:\/\//i.test(u) ? { name: name, url: u, link: true } : null;
+  }
+  var o = { name: name, link: false, type: String(f.type || '') };
+  if (f.id) o.id = String(f.id).replace(/[^a-zA-Z0-9_-]/g, '');
+  if (f.driveId) o.driveId = String(f.driveId).replace(/[^a-zA-Z0-9_-]/g, '');
+  if (typeof f.url === 'string' && f.url.indexOf('data:') === 0) o.url = f.url; // format antic, es migra a IndexedDB
+  return o;
+}
+
+function sanitizeItems(arr) {
+  if (!Array.isArray(arr)) return [];
+  var seen = {};
+  var out = [];
+  arr.forEach(function(x) {
+    if (!x || typeof x !== 'object') return;
+    var o = Object.assign({}, x);
+    var id = String(o.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!id || seen[id]) id = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    seen[id] = 1;
+    o.id = id;
+    o.files = (Array.isArray(o.files) ? o.files : []).map(cleanFile).filter(Boolean);
+    out.push(o);
+  });
+  return out;
+}
+
+function lsRead() {
+  try { return JSON.parse(localStorage.getItem('juicios') || '[]'); } catch (e) { return []; }
+}
+
+function lsWrite() {
+  try {
+    localStorage.setItem('juicios', JSON.stringify(items));
+    localStorage.setItem('juicios_updated', new Date().toISOString());
+    return true;
+  } catch (e) {
+    alert('⚠️ No s\'han pogut desar les dades (emmagatzematge ple?). Fes ara una còpia amb «Exportar fitxer».');
+    return false;
+  }
+}
+
+// ---------- Bústia de minutes ----------
+function normAtestat(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+function sanitizeMinutes(arr) {
+  if (!Array.isArray(arr)) return [];
+  var out = [], seen = {};
+  arr.forEach(function(x) {
+    if (!x || typeof x !== 'object') return;
+    var id = String(x.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!id || seen[id]) id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    seen[id] = 1;
+    out.push({ id: id, atestado: String(x.atestado || '').slice(0, 60), text: String(x.text || ''), savedAt: String(x.savedAt || new Date().toISOString()) });
+  });
+  return out;
+}
+
+function minutesRead() {
+  try { return JSON.parse(localStorage.getItem('juicios_minutes') || '[]'); } catch (e) { return []; }
+}
+
+function minutesWrite() {
+  try {
+    localStorage.setItem('juicios_minutes', JSON.stringify(minutes));
+    localStorage.setItem('juicios_updated', new Date().toISOString());
+    return true;
+  } catch (e) {
+    alert('⚠️ No s\'ha pogut desar la minuta (emmagatzematge ple?).');
+    return false;
+  }
+}
+
+// Números dins d'un text d'atestat: «1234/2025», «1234-25» (→ també 12342025), ignorant la resta del text
+function atestatKeys(x) {
+  var keys = [];
+  (String(x || '').match(/\d+(?:[\/\-\.]\d+)*/g) || []).forEach(function(tok) {
+    var parts = tok.split(/[\/\-\.]/);
+    var k = parts.join('');
+    if (k.length >= 4) keys.push(k);
+    if (parts.length > 1 && parts[parts.length - 1].length === 2) {
+      var k2 = parts.slice(0, -1).join('') + '20' + parts[parts.length - 1];
+      if (k2.length >= 4) keys.push(k2);
+    }
+  });
+  return keys;
+}
+
+function sameAtestat(a, b) {
+  var na = normAtestat(a), nb = normAtestat(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  var kb = atestatKeys(b);
+  return atestatKeys(a).some(function(k) { return kb.indexOf(k) !== -1; });
+}
+
+function findMinute(atestat) {
+  if (!normAtestat(atestat)) return null;
+  return minutes.filter(function(m) { return sameAtestat(m.atestado, atestat); })[0] || null;
+}
+
+function removeMinute(id) {
+  minutes = minutes.filter(function(m) { return m.id !== id; });
+  minutesWrite();
+}
+
+function detectAtestat(text) {
+  var m = String(text || '').match(/(?:atestat|dilig[èe]ncies)[^\d\n]{0,25}(\d[\d\/\-\.]*\d|\d)/i);
+  return m ? m[1] : '';
+}
+
+function openMinutes() { view = 'minutes'; pushSub(); render(); window.scrollTo(0, 0); }
+
+function addMinute() {
+  var at = $('#mAtestat').value.trim();
+  var tx = $('#mText').value;
+  if (!tx.trim()) { alert('Enganxa primer el text de la minuta.'); return; }
+  if (!at) at = detectAtestat(tx);
+  if (!at) { alert('Escriu el número d\'atestat (diligències) de la minuta.'); return; }
+  var ex = findMinute(at);
+  if (ex) {
+    if (!confirm('Ja hi ha una minuta per a l\'atestat ' + ex.atestado + '. Vols substituir-la?')) return;
+    minutes = minutes.filter(function(m) { return m.id !== ex.id; });
+  }
+  minutes.push({ id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), atestado: at, text: tx, savedAt: new Date().toISOString() });
+  if (!minutesWrite()) return;
+  var newMin = minutes[minutes.length - 1];
+
+  // Si ja hi ha judicis amb aquest atestat i sense minuta, proposa afegir-la-hi ara
+  var matches = items.filter(function(j) {
+    return sameAtestat(j.atestado, at) && !(j.minuta || '').trim();
+  });
+  var linked = false;
+  if (matches.length) {
+    var desc = matches.length === 1
+      ? 'el judici ' + (matches[0].proc || matches[0].expedient || '') + (matches[0].fecha ? ' (' + fmt(matches[0].fecha) + ')' : '')
+      : matches.length + ' judicis';
+    if (confirm('Hi ha ' + desc + ' amb aquest atestat.\n\nVols afegir-hi la minuta ara?')) {
+      matches.forEach(function(j) {
+        j.minuta = newMin.text;
+        j.testigos = mergeLines(j.testigos, extractTips(newMin.text));
+        j.denunciados = mergeLines(j.denunciados, extractDetinguts(newMin.text));
+      });
+      lsWrite();
+      removeMinute(newMin.id);
+      linked = true;
+    }
+  }
+  saveToDrive(true);
+  toast(linked ? 'Minuta afegida ' + (matches.length === 1 ? 'al judici' : 'a ' + matches.length + ' judicis') + ' ✓'
+    : (!matches.length && items.length ? 'Minuta desada. Cap judici sense minuta té aquest atestat.' : 'Minuta desada a la bústia ✓'));
+  render();
+}
+
+function delMinute(id) {
+  if (confirm('Vols eliminar aquesta minuta de la bústia?')) {
+    removeMinute(id);
+    saveToDrive(true);
+    render();
+  }
+}
+
+function renderMinutesHTML() {
+  var h = '<h1>Bústia de minutes <button onclick="back()">Tancar</button></h1>';
+  h += '<div class="card"><h2 style="border:0;margin:0;padding:0">Afegir minuta</h2>';
+  h += '<p class="mu">Guarda la minuta amb el número d\'atestat. Quan donis d\'alta el judici amb aquest atestat, l\'app et demanarà si vols recuperar-la. Si el judici ja existeix, t\'ho proposarà en desar la minuta.</p>';
+  h += '<label>Número d\'atestat (diligències)</label><input id="mAtestat" placeholder="Ex.: 1234-2025">';
+  h += '<label>Text de la minuta</label><textarea id="mText" style="min-height:140px" placeholder="Enganxa aquí el text de la minuta…"></textarea>';
+  h += '<div class="bar" style="margin-top:8px"><button class="pri" onclick="addMinute()">Desar a la bústia</button></div></div>';
+  h += '<div class="card"><h2 style="border:0;margin:0;padding:0">Minutes pendents (' + minutes.length + ')</h2>';
+  if (!minutes.length) {
+    h += '<p class="mu">No hi ha cap minuta a la bústia.</p>';
+  } else {
+    minutes.slice().sort(function(a, b) { return String(b.savedAt).localeCompare(String(a.savedAt)); }).forEach(function(m) {
+      h += '<div class="card" style="margin:8px 0 0">'
+        + '<b>Atestat ' + esc(m.atestado) + '</b> <span class="mu">· desada ' + esc(new Date(m.savedAt).toLocaleString('ca-ES')) + '</span>'
+        + '<details style="margin-top:6px"><summary class="mu">Veure text</summary><pre style="white-space:pre-wrap;font:inherit;font-size:13px;margin:6px 0 0">' + esc(m.text) + '</pre></details>'
+        + '<div class="bar" style="margin-top:8px"><button class="dan" onclick="delMinute(\'' + m.id + '\')">Eliminar</button></div></div>';
+    });
+  }
+  h += '</div>';
+  return h;
+}
+
+function applyMinute(m) {
+  collect();
+  cur.minuta = m.text;
+  cur.testigos = mergeLines(cur.testigos, extractTips(m.text));
+  cur.denunciados = mergeLines(cur.denunciados, extractDetinguts(m.text));
+  pendingMinuteId = m.id;
+  render();
+  toast('Minuta recuperada ✓ (es treu de la bústia en desar el judici)');
+}
+
+function offerMinute() {
+  if (!cur || !cur.atestado || (cur.minuta || '').trim()) return;
+  var m = findMinute(cur.atestado);
+  if (!m || declinedAtestats[normAtestat(cur.atestado)]) return;
+  if (confirm('Hi ha una minuta a la bústia per a l\'atestat ' + m.atestado + '.\n\nVols recuperar-la?')) applyMinute(m);
+  else declinedAtestats[normAtestat(cur.atestado)] = true;
+}
+
+// ---------- Valoració de jutjats ----------
+var COURT_TAGS = {
+  '': 'Sense etiqueta',
+  webex_ok: 'WebEx acceptat',
+  webex_ko: 'WebEx denegat o amb problemes',
+  tracte_ok: 'Bon tracte',
+  tracte_ko: 'Mal tracte',
+  retards: 'Retards / espera',
+  altres: 'Altres'
+};
+var COURT_TAG_ICON = { webex_ok: '✔', webex_ko: '✘', tracte_ok: '👍', tracte_ko: '👎', retards: '⏱', altres: '•' };
+
+function starsText(n) { n = Math.max(0, Math.min(5, Number(n) || 0)); return '★'.repeat(n) + '☆'.repeat(5 - n); }
+function fmtDay(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('ca-ES', { day: 'numeric', month: 'short', year: 'numeric' }); }
+
+function sanitizeCourts(o) {
+  var out = {};
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return out;
+  Object.keys(o).forEach(function(k) {
+    var c = o[k];
+    var key = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!key || !c || typeof c !== 'object') return;
+    var rating = Math.max(0, Math.min(5, parseInt(c.rating, 10) || 0));
+    var comments = (Array.isArray(c.comments) ? c.comments : []).map(function(m) {
+      if (!m || typeof m !== 'object') return null;
+      var id = String(m.id || '').replace(/[^a-zA-Z0-9_-]/g, '') || ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5));
+      return { id: id, date: String(m.date || new Date().toISOString()), text: String(m.text || '').slice(0, 2000), tag: COURT_TAGS.hasOwnProperty(m.tag) ? m.tag : '' };
+    }).filter(Boolean);
+    out[key] = { name: String(c.name || key).slice(0, 160), rating: rating, comments: comments };
+  });
+  return out;
+}
+
+function courtsRead() {
+  try { return JSON.parse(localStorage.getItem('juicios_courts') || '{}'); } catch (e) { return {}; }
+}
+
+function courtsWrite() {
+  try {
+    localStorage.setItem('juicios_courts', JSON.stringify(courts));
+    localStorage.setItem('juicios_updated', new Date().toISOString());
+    return true;
+  } catch (e) {
+    alert('⚠️ No s\'ha pogut desar (emmagatzematge ple?).');
+    return false;
+  }
+}
+
+var driveTimer = null;
+function driveSoon() {
+  clearTimeout(driveTimer);
+  driveTimer = setTimeout(function() { saveToDrive(true); }, 2500);
+}
+
+function getCourt(name) {
+  var k = normAtestat(name);
+  return k ? (courts[k] || null) : null;
+}
+
+function ensureCourt(name) {
+  var k = normAtestat(name);
+  if (!courts[k]) courts[k] = { name: String(name).trim(), rating: 0, comments: [] };
+  return courts[k];
+}
+
+function allCourtNames() {
+  var map = {};
+  Object.keys(courts).forEach(function(k) { map[k] = courts[k].name; });
+  items.forEach(function(j) {
+    var k = normAtestat(j.juzgado);
+    if (k && !map[k]) map[k] = String(j.juzgado).trim();
+  });
+  return Object.keys(map).map(function(k) { return { key: k, name: map[k] }; });
+}
+
+function countJudicis(name) {
+  var k = normAtestat(name);
+  return items.filter(function(j) { return normAtestat(j.juzgado) === k; }).length;
+}
+
+function openCourts() { view = 'courts'; pushSub(); render(); window.scrollTo(0, 0); }
+
+function openCourt(name, from) {
+  courtName = String(name || '').trim();
+  courtFrom = from || 'courts';
+  var d0 = subDepth;
+  pushSub();
+  courtPushed = subDepth > d0;
+  view = 'court';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function openCourtByKey(k) {
+  var f = allCourtNames().filter(function(x) { return x.key === k; })[0];
+  if (f) openCourt(f.name, 'courts');
+}
+
+function openCourtFromForm() {
+  collect();
+  if (!(cur.juzgado || '').trim()) { alert('Escriu primer l\'òrgan jurisdiccional.'); return; }
+  openCourt(cur.juzgado, 'form');
+}
+
+function closeCourt() {
+  if (courtPushed) { courtPushed = false; history.back(); }
+  else { view = courtFrom === 'form' ? 'form' : 'courts'; render(); window.scrollTo(0, 0); }
+}
+
+function setRating(n) {
+  var c = ensureCourt(courtName);
+  c.rating = (c.rating === n) ? 0 : n;
+  if (!courtsWrite()) return;
+  driveSoon();
+  render();
+}
+
+function addCourtComment() {
+  var tx = $('#cmText').value.trim();
+  var tag = $('#cmTag').value;
+  if (!tx) { alert('Escriu primer el comentari.'); return; }
+  var c = ensureCourt(courtName);
+  c.comments.unshift({ id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), date: new Date().toISOString(), text: tx.slice(0, 2000), tag: COURT_TAGS.hasOwnProperty(tag) ? tag : '' });
+  if (!courtsWrite()) return;
+  driveSoon();
+  toast('Comentari desat ✓');
+  render();
+}
+
+function delCourtComment(id) {
+  if (!confirm('Vols eliminar aquest comentari?')) return;
+  var c = getCourt(courtName);
+  if (!c) return;
+  c.comments = c.comments.filter(function(m) { return m.id !== id; });
+  courtsWrite();
+  driveSoon();
+  render();
+}
+
+function renderCourtHTML() {
+  var c = getCourt(courtName) || { rating: 0, comments: [] };
+  var h = '<h1>Jutjat <button onclick="closeCourt()">← Tornar</button></h1>';
+  h += '<div class="card"><b>' + esc(courtName) + '</b>';
+  h += '<p class="mu" style="margin:4px 0 8px">' + countJudicis(courtName) + ' judici(s) registrat(s) amb aquest jutjat</p><div>';
+  for (var i = 1; i <= 5; i++) h += '<button type="button" class="star-btn' + (i <= c.rating ? ' on' : '') + '" onclick="setRating(' + i + ')">★</button>';
+  h += '</div><p class="mu" style="margin:6px 0 0">' + (c.rating ? c.rating + ' de 5 · toca la mateixa estrella per treure la valoració' : 'Toca una estrella per valorar el jutjat') + '</p></div>';
+
+  h += '<div class="card"><h2 style="border:0;margin:0;padding:0">Afegir comentari</h2>';
+  h += '<p class="mu">Notes personals. Escriu fets concrets (p. ex. «va denegar el WebEx el 12/11») i evita noms de persones.</p>';
+  h += '<label>Tipus</label><select id="cmTag">';
+  Object.keys(COURT_TAGS).forEach(function(k) { h += '<option value="' + k + '">' + esc(COURT_TAGS[k]) + '</option>'; });
+  h += '</select><label>Comentari</label><textarea id="cmText" placeholder="Què ha passat?"></textarea>';
+  h += '<div class="bar" style="margin-top:8px"><button class="pri" onclick="addCourtComment()">Desar comentari</button></div></div>';
+
+  h += '<div class="card"><h2 style="border:0;margin:0;padding:0">Comentaris (' + c.comments.length + ')</h2>';
+  if (!c.comments.length) h += '<p class="mu">Encara no hi ha cap comentari.</p>';
+  c.comments.forEach(function(m) {
+    h += '<div class="card" style="margin:8px 0 0"><span class="mu">' + esc(fmtDay(m.date)) + '</span>'
+      + (m.tag ? ' <span class="tag">' + (COURT_TAG_ICON[m.tag] || '') + ' ' + esc(COURT_TAGS[m.tag]) + '</span>' : '')
+      + '<p style="margin:6px 0 0;white-space:pre-wrap">' + esc(m.text) + '</p>'
+      + '<div class="bar" style="margin-top:6px"><button class="dan" onclick="delCourtComment(\'' + m.id + '\')">Eliminar</button></div></div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+function courtListHTML() {
+  var rows = allCourtNames().filter(function(x) { return !courtQuery || x.name.toLowerCase().indexOf(courtQuery) !== -1; });
+  rows.sort(function(a, b) { return (countJudicis(b.name) - countJudicis(a.name)) || a.name.localeCompare(b.name); });
+  if (!rows.length) return '<p class="mu">No hi ha cap jutjat. Apareixeran quan registris judicis o valoris un jutjat.</p>';
+  return rows.map(function(x) {
+    var c = courts[x.key];
+    var nc = c ? c.comments.length : 0;
+    return '<div class="card item" onclick="openCourtByKey(\'' + x.key + '\')"><b>' + esc(x.name) + '</b><span class="mu">'
+      + (c && c.rating ? starsText(c.rating) : 'Sense valorar') + ' · ' + countJudicis(x.name) + ' judici(s)' + (nc ? ' · ' + nc + ' comentari(s)' : '') + '</span></div>';
+  }).join('');
+}
+
+function setCourtQuery(v) {
+  courtQuery = v.trim().toLowerCase();
+  var el = $('#courtList');
+  if (el) el.innerHTML = courtListHTML();
+}
+
+function renderCourtsHTML() {
+  var h = '<h1>Jutjats <button onclick="back()">Tancar</button></h1>';
+  h += '<div class="search-box"><span class="search-icon">🔍</span><input type="text" id="courtSearch" placeholder="Cercar jutjat…" value="' + esc(courtQuery) + '" oninput="setCourtQuery(this.value)"></div>';
+  h += '<div id="courtList">' + courtListHTML() + '</div>';
+  h += '<div class="card" style="margin-top:14px"><h2 style="border:0;margin:0 0 6px;padding:0">Compartir amb companys</h2>'
+    + '<p class="mu" style="margin:0">Genera un fitxer amb les teves valoracions i comentaris i passa\'l a un company. En importar-lo, s\'hi afegeixen les notes noves sense esborrar res del que ja tens. Revisa els comentaris abans de compartir-los.</p>'
+    + '<div class="bar" style="margin-top:8px"><button onclick="exportCourts()">📤 Exportar valoracions</button>'
+    + '<label class="btn-label" style="margin:0;cursor:pointer">📥 Importar valoracions<input type="file" accept=".json,application/json,text/plain" style="position:absolute;opacity:0;width:1px;height:1px" onchange="importCourts(event)"></label></div></div>';
+  return h;
+}
+
+function exportCourts() {
+  var blob = new Blob([JSON.stringify({ type: 'judicis-valoracions', exportedAt: new Date().toISOString(), courts: courts })], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'valoracions_jutjats.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+}
+
+// Fusiona valoracions d'un altre dispositiu: afegeix els comentaris nous (per identificador) i les estrelles només si no n'hi ha
+function mergeCourts(inc) {
+  var res = { courts: 0, comments: 0 };
+  Object.keys(inc).forEach(function(k) {
+    var c = inc[k];
+    if (!courts[k]) { courts[k] = c; res.courts++; res.comments += c.comments.length; return; }
+    var have = {};
+    courts[k].comments.forEach(function(m) { have[m.id] = 1; });
+    c.comments.forEach(function(m) { if (!have[m.id]) { courts[k].comments.push(m); res.comments++; } });
+    courts[k].comments.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+    if (!courts[k].rating && c.rating) courts[k].rating = c.rating;
+  });
+  courtsWrite();
+  return res;
+}
+
+function importCourts(event) {
+  var input = event.target;
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var raw = JSON.parse(e.target.result);
+      var inc = sanitizeCourts(raw && raw.courts ? raw.courts : raw);
+      var n = Object.keys(inc).length;
+      if (!n) { alert('El fitxer no conté valoracions de jutjats.'); return; }
+      if (!confirm('Vols afegir les valoracions de ' + n + ' jutjat(s) a les teves? No s\'esborrarà res del que ja tens.')) return;
+      var r = mergeCourts(inc);
+      driveSoon();
+      render();
+      toast('Importat: ' + r.comments + ' comentari(s) nou(s) i ' + r.courts + ' jutjat(s) nou(s) ✓');
+    } catch (err) {
+      alert('Error en llegir el fitxer.');
+    } finally {
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Notes del jutjat dins la finestra del correu WebEx
+function wxCourtNoteHTML(j) {
+  var c = j && j.juzgado ? getCourt(j.juzgado) : null;
+  if (!c) return '';
+  var wx = c.comments.filter(function(x) { return x.tag === 'webex_ko' || x.tag === 'webex_ok'; }).slice(0, 2);
+  if (!c.rating && !wx.length) return '';
+  var h = '<div class="info-box warning" style="margin:10px 0 0"><b style="font-size:13px">Les teves notes d\'aquest jutjat' + (c.rating ? ' · ' + starsText(c.rating) : '') + '</b>';
+  wx.forEach(function(x) {
+    h += '<p class="mu" style="margin:4px 0 0">' + (x.tag === 'webex_ko' ? '✘' : '✔') + ' ' + esc(fmtDay(x.date)) + ': ' + esc(x.text) + '</p>';
+  });
+  return h + '</div>';
+}
+
+// ---------- Lector de minuta (vista tipus bloc de notes) ----------
+var readerSize = Number(localStorage.getItem('juicios_reader_size')) || 17;
+
+function openMinutaReader() {
+  collect();
+  if (!(cur.minuta || '').trim()) return;
+  view = 'minutaview';
+  pushSub();
+  render();
+  window.scrollTo(0, 0);
+}
+
+function closeMinutaReader() {
+  if (subDepth > 1) { history.back(); }
+  else { view = 'form'; render(); window.scrollTo(0, 0); }
+}
+
+function readerFont(d) {
+  readerSize = Math.max(13, Math.min(28, readerSize + d));
+  try { localStorage.setItem('juicios_reader_size', String(readerSize)); } catch (e) {}
+  var el = $('#readerBody');
+  if (el) el.style.fontSize = readerSize + 'px';
+}
+
+function formatMinutaHTML(t) {
+  var out = '';
+  String(t || '').replace(/\r/g, '').split('\n').forEach(function(raw) {
+    var line = raw.trim();
+    if (!line) { out += '<div style="height:8px"></div>'; return; }
+    if (/^\.{2,}/.test(line)) { out += '<p class="rd-bullet">' + esc(line.replace(/^\.+\s*/, '')) + '</p>'; return; }
+    if ((/:$/.test(line) && line.length < 60) || /^[A-ZÀ-Ý ]{6,}$/.test(line)) { out += '<p class="rd-h">' + esc(line) + '</p>'; return; }
+    out += '<p class="rd-p">' + esc(line) + '</p>';
+  });
+  return out;
+}
+
+function renderMinutaReaderHTML() {
+  var j = cur || {};
+  var h = '<h1>Minuta <button onclick="closeMinutaReader()">← Tornar al judici</button></h1>';
+  h += '<div class="bar" style="margin:0 0 10px"><button onclick="readerFont(-1)">A−</button><button onclick="readerFont(1)">A+</button><button onclick="copyText(cur.minuta)">📋 Copiar</button></div>';
+  h += '<div class="reader">';
+  h += '<p class="mu" style="margin:0 0 10px"><b>' + esc(j.proc || j.expedient || 'Judici') + '</b>' + (j.atestado ? ' · atestat ' + esc(j.atestado) : '') + (j.fecha ? ' · ' + fmt(j.fecha) : '') + '</p>';
+  if ((j.denunciados || '').trim()) h += '<p class="mu" style="margin:0 0 6px"><b>Persones:</b> ' + esc(j.denunciados.split('\n').filter(Boolean).join(' · ')) + '</p>';
+  if ((j.testigos || '').trim()) h += '<p class="mu" style="margin:0 0 12px"><b>Agents/testimonis:</b> ' + esc(j.testigos.split('\n').filter(Boolean).join(' · ')) + '</p>';
+  h += '<div id="readerBody" style="font-size:' + readerSize + 'px">' + formatMinutaHTML(j.minuta) + '</div></div>';
+  return h;
+}
+
+// ---------- Copiar al porta-retalls ----------
+function fallbackCopy(txt) {
+  var ta = document.createElement('textarea');
+  ta.value = txt;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); toast('Copiat ✓'); } catch (e) { alert('No s\'ha pogut copiar.'); }
+  ta.remove();
+}
+
+function copyText(txt) {
+  txt = String(txt || '');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(function() { toast('Copiat ✓'); }, function() { fallbackCopy(txt); });
+  } else {
+    fallbackCopy(txt);
+  }
+}
+
+// ---------- Correu al jutjat: assistència telemàtica (WebEx) ----------
+var WX_MOTIUS = {
+  fora: 'el meu lloc de residència és fora de la ciutat de Barcelona i el desplaçament presencial em suposa una dificultat significativa',
+  vacances: 'en la data assenyalada em trobo de vacances i fora de la ciutat de Barcelona; si és necessari, puc aportar la documentació acreditativa',
+  fora_dia: 'en la data assenyalada em trobo fora de la ciutat de Barcelona i no em és possible desplaçar-me a la seu judicial',
+  metge: 'concorren motius mèdics que dificulten el meu desplaçament i la meva presència física a la seu judicial; si és necessari, puc aportar la documentació acreditativa',
+  altres: 'concorren motius personals degudament justificats que dificulten la meva presència física a la seu judicial; si és necessari, puc aportar la documentació acreditativa'
+};
+var wxSubject = '';
+
+function buildWebexMail(j, motiu, detall, sig) {
+  var data = j.fecha ? new Date(j.fecha + 'T00:00').toLocaleDateString('ca-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  var ref = [j.proc ? 'procediment ' + j.proc : '', j.expedient ? 'expedient ' + j.expedient : ''].filter(Boolean).join(', ');
+  var subject = 'Sol·licitud d\'assistència telemàtica'
+    + (j.proc ? ' - Procediment ' + j.proc : (j.expedient ? ' - Expedient ' + j.expedient : ''))
+    + (j.fecha ? ' - Judici ' + j.fecha.split('-').reverse().join('/') : '');
+  var body = 'Bon dia,\n\n'
+    + 'Em dirigeixo a aquest òrgan judicial' + (j.juzgado ? ' (' + j.juzgado + ')' : '')
+    + ' en relació amb la citació per comparèixer' + (j.qualitat ? (/^[aeiouàèéíòóúh]/i.test(String(j.qualitat).trim()) ? ' en qualitat d\'' : ' en qualitat de ') + String(j.qualitat).trim().toLowerCase() : '')
+    + (ref ? ' en el ' + ref : '') + (j.atestado ? ' (atestat ' + j.atestado + ')' : '')
+    + (data ? ', assenyalada per al dia ' + data + (j.hora ? ' a les ' + j.hora + ' hores' : '') + (j.sala ? ' (' + j.sala + ')' : '') : '') + '.\n\n'
+    + 'Per aquest motiu, sol·licito poder assistir-hi per videoconferència (plataforma WebEx o similar), atès que ' + (WX_MOTIUS[motiu] || WX_MOTIUS.altres) + '.'
+    + (detall && detall.trim() ? ' ' + detall.trim() : '') + '\n\n'
+    + 'Resto a la seva disposició per facilitar qualsevol dada addicional i per coordinar les dades de connexió.\n\n'
+    + 'Moltes gràcies.\n\nAtentament,' + (sig && sig.trim() ? '\n' + sig.trim() : '');
+  return { subject: subject, body: body };
+}
+
+function openWebexModal() {
+  collect();
+  var j = cur;
+  var map = {};
+  try { map = JSON.parse(localStorage.getItem('juicios_court_emails') || '{}'); } catch (e) {}
+  var key = normAtestat(j.juzgado);
+  var to = '', src = '';
+  if ((j.emailJutjat || '').trim()) { to = j.emailJutjat.trim(); src = 'de la fitxa del judici'; }
+  else if (key && map[key]) { to = map[key]; src = 'recordat d\'altres vegades per a aquest jutjat'; }
+  else {
+    var other = items.filter(function(x) { return key && normAtestat(x.juzgado) === key && (x.emailJutjat || '').trim(); })[0];
+    if (other) { to = other.emailJutjat.trim(); src = 'd\'un altre judici d\'aquest jutjat'; }
+  }
+  var sig = localStorage.getItem('juicios_signature') || '';
+  var motiu = localStorage.getItem('juicios_wx_motiu') || 'fora';
+  var old = $('#modalWebex');
+  if (old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = 'modalWebex';
+  ov.className = 'modal-overlay';
+  ov.innerHTML = '<div class="modal-card" style="max-height:92vh;overflow:auto">'
+    + '<button class="modal-close" onclick="closeWebexModal()">&times;</button>'
+    + '<h3 style="margin:4px 0 6px;font-size:18px">✉️ Assistència telemàtica</h3>'
+    + '<p class="mu" style="margin:0 0 6px">Prepara un correu al jutjat per sol·licitar assistir per videoconferència (WebEx).</p>'
+    + '<label>Correu del jutjat' + (j.juzgado ? ' (' + esc(j.juzgado) + ')' : '') + '</label><input id="wxTo" type="email" placeholder="jutjat@exemple.cat" value="' + esc(to) + '">'
+    + '<p class="mu" style="margin:4px 0 0">' + (to ? 'Suggeriment ' + src + '. Comprova que continua vigent.' : 'No tinc cap correu d\'aquest jutjat: busca\'l i escriu-lo; l\'app el recordarà.') + '</p>'
+    + '<div class="row" style="margin-top:6px"><a class="btn" target="_blank" rel="noopener" href="https://justicia.gencat.cat/ca/ambits/administracio-de-justicia/directori-seus/">📖 Directori de seus judicials</a>'
+    + (j.juzgado ? '<a class="btn" target="_blank" rel="noopener" href="https://www.google.com/search?q=' + encodeURIComponent('correu electrònic ' + j.juzgado) + '">🔎 Cercar el correu</a>' : '') + '</div>'
+    + wxCourtNoteHTML(j)
+    + '<label>Motiu</label><select id="wxMotiu" onchange="wxRefresh()">'
+    + '<option value="fora"' + (motiu === 'fora' ? ' selected' : '') + '>Resideixo fora de Barcelona</option>'
+    + '<option value="vacances"' + (motiu === 'vacances' ? ' selected' : '') + '>Estic de vacances</option>'
+    + '<option value="fora_dia"' + (motiu === 'fora_dia' ? ' selected' : '') + '>Aquell dia sóc fora de Barcelona</option>'
+    + '<option value="metge"' + (motiu === 'metge' ? ' selected' : '') + '>Motius mèdics</option>'
+    + '<option value="altres"' + (motiu === 'altres' ? ' selected' : '') + '>Gestions o motius personals</option></select>'
+    + '<label>Detall addicional (opcional)</label><textarea id="wxDetall" style="min-height:56px" oninput="wxRefresh()"></textarea>'
+    + '<label>Signatura (nom, TIP, unitat…)</label><textarea id="wxSig" style="min-height:56px" oninput="wxRefresh()">' + esc(sig) + '</textarea>'
+    + '<label>Missatge (el pots editar)</label><textarea id="wxBody" style="min-height:230px"></textarea>'
+    + '<p class="mu" style="margin:6px 0 0">Assumpte: <span id="wxSubj"></span></p>'
+    + '<div class="bar"><button class="pri" onclick="wxSend()">✉️ Obrir al correu</button><button onclick="wxCopy()">📋 Copiar</button><button onclick="closeWebexModal()">Tancar</button></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  wxRefresh();
+}
+
+function closeWebexModal() {
+  var m = $('#modalWebex');
+  if (m) m.remove();
+}
+
+function wxRefresh() {
+  var mail = buildWebexMail(cur || {}, $('#wxMotiu').value, $('#wxDetall').value, $('#wxSig').value);
+  wxSubject = mail.subject;
+  $('#wxBody').value = mail.body;
+  $('#wxSubj').textContent = mail.subject;
+}
+
+function wxRememberPrefs() {
+  try {
+    localStorage.setItem('juicios_signature', $('#wxSig').value);
+    localStorage.setItem('juicios_wx_motiu', $('#wxMotiu').value);
+    var addr = $('#wxTo').value.trim();
+    if (addr.indexOf('@') > 0 && cur) { cur.emailJutjat = addr; var ef = $('#emailJutjat'); if (ef) ef.value = addr; }
+    var key = normAtestat(cur && cur.juzgado);
+    if (key && addr.indexOf('@') > 0) {
+      var map = {};
+      try { map = JSON.parse(localStorage.getItem('juicios_court_emails') || '{}'); } catch (e) {}
+      map[key] = addr;
+      localStorage.setItem('juicios_court_emails', JSON.stringify(map));
+    }
+  } catch (e) {}
+}
+
+function wxSend() {
+  wxRememberPrefs();
+  var addr = $('#wxTo').value.replace(/[;\s]+/g, ',').replace(/[^A-Za-z0-9@._,+\-]/g, '');
+  var url = 'mailto:' + addr + '?subject=' + encodeURIComponent(wxSubject) + '&body=' + encodeURIComponent($('#wxBody').value.replace(/\n/g, '\r\n'));
+  window.location.href = url;
+}
+
+function wxCopy() {
+  wxRememberPrefs();
+  copyText(wxSubject + '\n\n' + $('#wxBody').value);
+}
+
+function onAtestatChange() { collect(); offerMinute(); }
+
+function pickMinute(id) {
+  collect();
+  var m = minutes.filter(function(x) { return x.id === id; })[0];
+  if (m && confirm('Vols recuperar en aquest judici la minuta de l\'atestat ' + m.atestado + '?')) applyMinute(m);
+  else render();
+}
+
+function recoverMinuteBtn() {
+  collect();
+  var m = findMinute(cur.atestado);
+  if (m) applyMinute(m);
+}
+
+// ---------- Adjunts a IndexedDB ----------
+var dbp = null;
+function dbOpen() {
+  if (dbp) return dbp;
+  dbp = new Promise(function(res, rej) {
+    if (!window.indexedDB) { rej(new Error('IndexedDB no disponible')); return; }
+    var r = indexedDB.open('judicis_db', 1);
+    r.onupgradeneeded = function() { r.result.createObjectStore('files', { keyPath: 'id' }); };
+    r.onsuccess = function() { res(r.result); };
+    r.onerror = function() { rej(r.error); };
+  });
+  return dbp;
+}
+function dbTx(mode, fn) {
+  return dbOpen().then(function(db) {
+    return new Promise(function(res, rej) {
+      var tx = db.transaction('files', mode);
+      var rq = fn(tx.objectStore('files'));
+      tx.oncomplete = function() { res(rq ? rq.result : undefined); };
+      tx.onerror = function() { rej(tx.error); };
+      tx.onabort = function() { rej(tx.error); };
+    });
+  });
+}
+function dbPut(id, blob) { return dbTx('readwrite', function(s) { return s.put({ id: id, blob: blob }); }); }
+function dbGet(id) { return dbTx('readonly', function(s) { return s.get(id); }).then(function(r) { return r ? r.blob : null; }); }
+function dbDel(id) { return dbTx('readwrite', function(s) { return s.delete(id); }); }
+
+function newFileId() { return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function blobToDataURL(b) {
+  return new Promise(function(res, rej) {
+    var r = new FileReader();
+    r.onload = function() { res(r.result); };
+    r.onerror = function() { rej(r.error); };
+    r.readAsDataURL(b);
+  });
+}
+
+// Migra adjunts antics (base64 dins de localStorage) a IndexedDB
+async function migrateFiles() {
+  var changed = false;
+  for (var i = 0; i < items.length; i++) {
+    var fl = items[i].files || [];
+    for (var k = 0; k < fl.length; k++) {
+      var f = fl[k];
+      if (!f.link && typeof f.url === 'string' && f.url.indexOf('data:') === 0) {
+        try {
+          var b = await (await fetch(f.url)).blob();
+          var id = f.id || newFileId();
+          await dbPut(id, b);
+          f.id = id;
+          f.type = b.type || f.type || '';
+          delete f.url;
+          changed = true;
+        } catch (e) {}
+      }
+    }
+  }
+  if (changed) lsWrite();
+}
+
+// ---------- Estat i navegació ----------
+function setMainView(v) {
+  view = v;
+  localStorage.setItem('juicios_view', v);
+  render();
+}
+
+function setQuadrant(q) {
+  selectedQuadrant = q;
+  localStorage.setItem('juicios_quadrant', q);
+  render();
+}
+
+function setFilter(v) {
+  filter = v;
+  localStorage.setItem('juicios_filter', v);
+  currentPage = 1;
+  render();
+}
+
+function setSort(v) {
+  sortBy = v;
+  localStorage.setItem('juicios_sort', v);
+  currentPage = 1;
+  render();
+}
+
+function setSearch(v) {
+  searchQuery = v.trim().toLowerCase();
+  currentPage = 1;
+  updateListOnly();
+}
+
+function clearSearch() {
+  searchQuery = '';
+  currentPage = 1;
+  var input = $('#searchInput');
+  if (input) input.value = '';
+  var clearBtn = $('#searchClearBtn');
+  if (clearBtn) clearBtn.style.display = 'none';
+  updateListOnly();
+}
+
+function init() {
+  items = sanitizeItems(lsRead());
+  minutes = sanitizeMinutes(minutesRead());
+  courts = sanitizeCourts(courtsRead());
+  render();
+  migrateFiles().then(function() {
+    if (view === 'calendar' || view === 'list') render();
+  });
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  if (dToken()) syncDriveAuto(false);
+}
+
+function obrirModalDrive() { $('#modalDrive').style.display = 'flex'; }
+function tancarModalDrive() { $('#modalDrive').style.display = 'none'; }
+
+// ---------- Google Drive ----------
+function dToken() {
+  if (accessToken && tokenExp && Date.now() > tokenExp) dropToken(false);
+  return accessToken;
+}
+
+function dropToken(rerender) {
+  accessToken = null;
+  tokenExp = 0;
+  try { sessionStorage.removeItem('gdrive_tok'); } catch (e) {}
+  if (rerender !== false && (view === 'calendar' || view === 'list')) render();
+}
+
+function connectDrive() {
+  if (typeof google === 'undefined' || !google.accounts) {
+    alert('S\'està carregant el servei de Google. Prova-ho en uns segons.');
+    return;
+  }
+  if (!tokenClient) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: function(res) {
+        if (res.access_token) {
+          accessToken = res.access_token;
+          tokenExp = Date.now() + Math.max(60, (Number(res.expires_in) || 3600) - 60) * 1000;
+          try { sessionStorage.setItem('gdrive_tok', JSON.stringify({ v: accessToken, exp: tokenExp })); } catch (e) {}
+          render();
+          syncDriveAuto(false);
+        } else if (res.error) {
+          toast('No s\'ha pogut connectar amb Google.');
+        }
+      }
+    });
+  }
+  tokenClient.requestAccessToken();
+}
+
+async function driveFetch(url, opts) {
+  if (!dToken()) throw new Error('Cal connectar Google Drive.');
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers, { 'Authorization': 'Bearer ' + accessToken });
+  var r = await fetch(url, opts);
+  if (r.status === 401) {
+    dropToken();
+    throw new Error('La sessió de Google ha caducat. Torna a connectar.');
+  }
+  if (!r.ok) throw new Error('Error de Drive (' + r.status + ')');
+  return r;
+}
+
+async function findBackup() {
+  var url = DRIVE_API + '?q=' + encodeURIComponent("name='" + BACKUP_NAME + "' and trashed=false") + '&fields=files(id,name)';
+  var data = await (await driveFetch(url)).json();
+  return (data.files && data.files.length) ? data.files[0] : null;
+}
+
+// ---------- Adjunts a Google Drive ----------
+var driveFolderId = null;
+var FOLDER_NAME = 'Judicis - adjunts';
+
+async function ensureFolder() {
+  if (driveFolderId) return driveFolderId;
+  var q = "name='" + FOLDER_NAME + "' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  var data = await (await driveFetch(DRIVE_API + '?q=' + encodeURIComponent(q) + '&fields=files(id)')).json();
+  if (data.files && data.files.length) { driveFolderId = data.files[0].id; return driveFolderId; }
+  var r = await driveFetch(DRIVE_API + '?fields=id', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+  });
+  driveFolderId = (await r.json()).id;
+  return driveFolderId;
+}
+
+async function uploadAttachment(f) {
+  var blob = await dbGet(f.id);
+  if (!blob) return false; // no és en aquest dispositiu: no hi ha res a pujar
+  var folder = await ensureFolder();
+  var form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify({ name: f.id + '__' + f.name, parents: [folder] })], { type: 'application/json' }));
+  form.append('file', blob);
+  var r = await driveFetch(UPLOAD_API + '?uploadType=multipart&fields=id', { method: 'POST', body: form });
+  f.driveId = (await r.json()).id;
+  return true;
+}
+
+function syncCurDriveId(f) {
+  if (cur && cur.files) cur.files.forEach(function(x) { if (x.id === f.id) x.driveId = f.driveId; });
+}
+
+// Puja a Drive tots els adjunts que encara no hi són. Retorna quants han fallat.
+async function syncAttachmentsUp() {
+  await processPendingDeletes();
+  var pending = [];
+  items.forEach(function(it) {
+    (it.files || []).forEach(function(f) { if (!f.link && f.id && !f.driveId) pending.push(f); });
+  });
+  var fail = 0;
+  for (var i = 0; i < pending.length; i++) {
+    if (!dToken()) { fail += pending.length - i; break; }
+    try {
+      toast('Pujant adjunts a Drive (' + (i + 1) + '/' + pending.length + ')…');
+      if (await uploadAttachment(pending[i])) { syncCurDriveId(pending[i]); lsWrite(); }
+    } catch (e) { fail++; }
+  }
+  return fail;
+}
+
+// Esborrats pendents: si s'elimina un adjunt, també s'elimina de Drive (quan hi ha connexió)
+function queueDriveDelete(driveId) {
+  if (!driveId) return;
+  try {
+    var q = JSON.parse(localStorage.getItem('drive_pending_del') || '[]');
+    if (q.indexOf(driveId) === -1) q.push(driveId);
+    localStorage.setItem('drive_pending_del', JSON.stringify(q));
+  } catch (e) {}
+  if (dToken()) processPendingDeletes();
+}
+
+async function processPendingDeletes() {
+  var q;
+  try { q = JSON.parse(localStorage.getItem('drive_pending_del') || '[]'); } catch (e) { q = []; }
+  if (!q.length || !dToken()) return;
+  var left = [];
+  for (var i = 0; i < q.length; i++) {
+    try { await driveFetch(DRIVE_API + '/' + q[i], { method: 'DELETE' }); }
+    catch (e) { if (String(e.message).indexOf('404') === -1) left.push(q[i]); }
+  }
+  try { localStorage.setItem('drive_pending_del', JSON.stringify(left)); } catch (e) {}
+}
+
+// Després de restaurar des de Drive: baixa els adjunts que falten en aquest dispositiu
+async function downloadMissingAttachments() {
+  var need = [];
+  items.forEach(function(it) {
+    (it.files || []).forEach(function(f) { if (!f.link && f.id && f.driveId) need.push(f); });
+  });
+  var got = 0, fail = 0;
+  for (var i = 0; i < need.length; i++) {
+    try {
+      if (await dbGet(need[i].id)) continue;
+      toast('Baixant adjunts de Drive (' + (i + 1) + '/' + need.length + ')…');
+      var r = await driveFetch(DRIVE_API + '/' + need[i].driveId + '?alt=media');
+      await dbPut(need[i].id, await r.blob());
+      got++;
+    } catch (e) { fail++; }
+  }
+  if (got || fail) toast('Adjunts recuperats: ' + got + (fail ? ' (' + fail + ' no s\'han pogut baixar)' : ' ✓'));
+}
+
+async function syncDriveAuto(manual) {
+  if (!dToken()) return;
+  try {
+    var f = await findBackup();
+    if (!f) { if (manual) toast('Encara no hi ha cap còpia a Drive.'); return; }
+    var raw = await (await driveFetch(DRIVE_API + '/' + f.id + '?alt=media')).json();
+    var imported = sanitizeItems(Array.isArray(raw) ? raw : (raw.data || []));
+    var remoteDate = raw.updatedAt ? new Date(raw.updatedAt) : null;
+    var ls = localStorage.getItem('juicios_updated');
+    var localDate = ls ? new Date(ls) : null;
+    var remoteNewer = !!(remoteDate && (!localDate || remoteDate > localDate || !items.length));
+
+    if (remoteNewer && imported.length) {
+      var msg = items.length
+        ? 'S\'han trobat dades MÉS RECENTS a Google Drive (' + remoteDate.toLocaleString('ca-ES') + ').\n\nVols actualitzar les teves dades locals?'
+        : 'Hi ha una còpia a Google Drive (' + remoteDate.toLocaleString('ca-ES') + ').\n\nVols restaurar-la en aquest dispositiu?';
+      if (confirm(msg)) {
+        items = imported;
+        if (isValidQuadrant(raw.quadrant)) {
+          selectedQuadrant = raw.quadrant;
+          localStorage.setItem('juicios_quadrant', selectedQuadrant);
+        }
+        if (Array.isArray(raw.minutes)) { minutes = sanitizeMinutes(raw.minutes); try { localStorage.setItem('juicios_minutes', JSON.stringify(minutes)); } catch (e) {} }
+        if (raw.courts && typeof raw.courts === 'object') { courts = sanitizeCourts(raw.courts); try { localStorage.setItem('juicios_courts', JSON.stringify(courts)); } catch (e) {} }
+        lsWrite();
+        localStorage.setItem('juicios_updated', remoteDate.toISOString());
+        render();
+        toast('Sincronitzat des de Google Drive ✓');
+        downloadMissingAttachments();
+      }
+    } else if (manual) {
+      toast(remoteDate && localDate && localDate > remoteDate
+        ? 'Les dades locals són més recents. Prem «Desar» per pujar-les.'
+        : 'Tot al dia ✓');
+    }
+  } catch (e) {
+    toast(e.message || 'Error amb Drive');
+  }
+}
+
+async function saveToDrive(silent) {
+  if (!dToken()) {
+    if (!silent) toast('Connecta primer el teu compte de Google Drive.');
+    return;
+  }
+  var attFail = await syncAttachmentsUp();
+  if (!dToken()) { toast('La sessió de Google ha caducat. Torna a connectar.'); return; }
+  var updatedAt = new Date().toISOString();
+  var body = JSON.stringify({ updatedAt: updatedAt, count: items.length, data: items, quadrant: selectedQuadrant, minutes: minutes, courts: courts });
+  try {
+    var f = await findBackup();
+    if (f) {
+      await driveFetch(UPLOAD_API + '/' + f.id + '?uploadType=media', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: body
+      });
+    } else {
+      var form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name: BACKUP_NAME, mimeType: 'application/json' })], { type: 'application/json' }));
+      form.append('file', new Blob([body], { type: 'application/json' }));
+      await driveFetch(UPLOAD_API + '?uploadType=multipart', { method: 'POST', body: form });
+    }
+    localStorage.setItem('juicios_updated', updatedAt);
+    localStorage.setItem('juicios_last_backup', updatedAt);
+    toast(attFail ? 'Desat a Drive, però ' + attFail + ' adjunt(s) pendent(s) de pujar.' : 'Desat a Google Drive ✓');
+    if (view === 'calendar' || view === 'list') render();
+  } catch (e) {
+    toast('Drive: ' + (e.message || 'no s\'ha pogut desar'));
+  }
+}
+
+// ---------- CRUD ----------
+function save(j) {
+  if (cur && j && j.id === cur.id && view === 'form') formSnapshot = snapshotOf(j);
+  var i = items.findIndex(function(x) { return x.id === j.id; });
+  if (i < 0) { items.push(Object.assign({}, j)); } else { items[i] = Object.assign({}, j); }
+  lsWrite();
+}
+
+function remove(id) {
+  var it = items.filter(function(x) { return x.id === id; })[0];
+  if (it && it.files) {
+    it.files.forEach(function(f) {
+      if (!f.link && f.id) dbDel(f.id).catch(function() {});
+      if (f.driveId) queueDriveDelete(f.driveId);
+    });
+  }
+  items = items.filter(function(x) { return x.id !== id; });
+  lsWrite();
+}
+
+// Estat del judici (determina el color al calendari i a la llista)
+var STATE_INFO = {
+  fut: 'Pendent (futur)',
+  rev: 'Pendent de marcar (data passada)',
+  nojus: 'Celebrat · falta justificant',
+  nodad: 'Celebrat · falta DAD 67',
+  dad: 'DAD 67 presentada · pendent de cobrament',
+  pag: 'Cobrat',
+  sus: 'Suspès'
+};
+var STATE_LEGEND = { fut: 'Futur', rev: 'Per marcar', nojus: 'Sense justificant', nodad: 'Sense DAD 67', dad: 'DAD presentada', pag: 'Cobrat', sus: 'Suspès' };
+
+function stateKey(j) {
+  if (j.celebrado === 'no' || j.celebrado === 'suspendido') return 'sus';
+  if (j.celebrado !== 'si') return (j.fecha && j.fecha < localDateStr()) ? 'rev' : 'fut';
+  if (j.cobrado) return 'pag';
+  if (j.dad67) return 'dad';
+  return j.justificante ? 'nodad' : 'nojus';
+}
+
+function status(j) {
+  var k = stateKey(j);
+  return [STATE_INFO[k], 's-' + k];
+}
+
+// Filtre per estat: el mateix per al calendari i per al llistat
+var FILTER_KEYS = {
+  pend: ['fut', 'rev'], fut: ['fut'], rev: ['rev'],
+  dad: ['nojus', 'nodad'], nojus: ['nojus'], nodad: ['nodad'],
+  cobro: ['dad'], pag: ['pag'], sus: ['sus']
+};
+var FILTER_OPTIONS = [
+  ['todos', 'Tots'],
+  ['pend', 'Pendents de celebrar (futurs i per marcar)'],
+  ['fut', 'Només futurs'],
+  ['rev', 'Per marcar (data passada)'],
+  ['dad', 'Celebrats sense DAD 67'],
+  ['nojus', 'Celebrats sense justificant'],
+  ['nodad', 'Amb justificant, sense DAD 67'],
+  ['cobro', 'Pendents de cobrament (DAD presentada)'],
+  ['pag', 'Cobrats'],
+  ['sus', 'Suspesos']
+];
+
+function matchesFilter(j) {
+  if (filter === 'todos' || !FILTER_KEYS[filter]) return true;
+  return FILTER_KEYS[filter].indexOf(stateKey(j)) !== -1;
+}
+
+function filterOptionsHTML() {
+  return FILTER_OPTIONS.map(function(o) {
+    return '<option value="' + o[0] + '"' + (filter === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+  }).join('');
+}
+
+function timeToMinutes(tStr) {
+  if (!tStr) return null;
+  var p = String(tStr).split(':');
+  if (p.length < 2) return null;
+  var v = parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+  return isNaN(v) ? null : v;
+}
+
+function calUrl(j) {
+  if (!j.fecha) return '#';
+  var d = String(j.fecha).replace(/-/g, '');
+  var sm = timeToMinutes(j.hora);
+  if (sm === null) sm = 540; // 09:00 per defecte
+  var em = Math.min(1439, sm + 120);
+  var hhmm = function(m) { return String(Math.floor(m / 60)).padStart(2, '0') + String(m % 60).padStart(2, '0') + '00'; };
+  var det = ['Expedient: ' + (j.expedient || ''), 'Procediment: ' + (j.proc || ''), 'Òrgan: ' + (j.juzgado || ''), 'Sala: ' + (j.sala || ''), 'Atestat: ' + (j.atestado || ''), 'Qualitat: ' + (j.qualitat || ''), 'Modalitat: ' + (j.modalidadPrev || ''), j.notas || ''].join('\n');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent((j.objecte || 'Judici') + ' ' + (j.proc || j.expedient || '')) + '&dates=' + d + 'T' + hhmm(sm) + '/' + d + 'T' + hhmm(em) + '&ctz=Europe/Madrid&location=' + encodeURIComponent([j.juzgado, j.adreca, j.sala].filter(Boolean).join(', ')) + '&details=' + encodeURIComponent(det);
+}
+
+function getDayCobroInfo(dateKey) {
+  var dayEvents = items.filter(function(x) { return x.fecha === dateKey; });
+  if (dayEvents.length < 2) return { isDouble: false, count: dayEvents.length, diffMin: 0 };
+
+  var minStart = 1440;
+  var maxEnd = 0;
+
+  dayEvents.forEach(function(x) {
+    var start = timeToMinutes(x.llegada);
+    if (start === null) start = timeToMinutes(x.hora);
+    var end = timeToMinutes(x.salida);
+    if (end === null && start !== null) end = start + 60;
+    if (start !== null && start < minStart) minStart = start;
+    if (end !== null && end > maxEnd) maxEnd = end;
+  });
+
+  var diff = (maxEnd > minStart) ? (maxEnd - minStart) : 0;
+  return { isDouble: diff > 180, count: dayEvents.length, diffMin: diff, minStart: minStart, maxEnd: maxEnd };
+}
+
+// Tipus de setmana: F = festa, C = curta (dl-dv), L = llarga (dl-dg); 2n valor = lletra del torn.
+// base = posició de cada escamot dins del cicle a REF_DATE (2 de febrer de 2026).
+var WEEK_CYCLES = {
+  'Q3': { weeks: [['F'], ['C', 'T'], ['L', 'Tr']], base: { '1': 2, '2': 0, '3': 1 } },
+  'Q5': { weeks: [['F'], ['C', 'T'], ['L', 'N'], ['F'], ['L', 'M']], base: { '1': 0, '2': 4, '3': 3, '4': 2, '5': 1 } }
+};
+
+// --- QUADRANTS ---
+function dayNumber(s) {
+  var p = String(s).split('-');
+  return Math.round(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])) / 86400000);
+}
+
+function getShiftForDate(qKey, dateStr) {
+  if (!qKey || !dateStr) return null;
+  if (qKey === '7x7-A' || qKey === '7x7-B') {
+    var diffDays = dayNumber(dateStr) - dayNumber(REF_DATE); // independent de l'hora d'estiu/hivern
+    var cyclePos = ((diffDays % 14) + 14) % 14;
+    var isTr = (cyclePos < 7);
+    if (qKey === '7x7-A') isTr = !isTr;
+    return isTr ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
+  }
+  // Cicles setmanals (dilluns-diumenge): Q3 i Q5
+  var parts = String(qKey).split('-');
+  var cyc = WEEK_CYCLES[parts[0]];
+  if (cyc && cyc.base[parts[1]] !== undefined) {
+    var dn = dayNumber(dateStr) - dayNumber(REF_DATE); // REF_DATE és dilluns
+    var wk = Math.floor(dn / 7);
+    var dow = ((dn % 7) + 7) % 7; // 0 = dilluns ... 6 = diumenge
+    var n = cyc.weeks.length;
+    var w = cyc.weeks[(((wk + cyc.base[parts[1]]) % n) + n) % n];
+    if (w[0] === 'L') return { shift: w[1], type: 'treball' };            // llarga: dl-dg
+    if (w[0] === 'C' && dow < 5) return { shift: w[1], type: 'treball' }; // curta: dl-dv
+    return { shift: 'F', type: 'festa' };
+  }
+  // Dilluns a divendres treball, cap de setmana festa
+  if (qKey === 'LV') {
+    var dow2 = (((dayNumber(dateStr) - dayNumber(REF_DATE)) % 7) + 7) % 7;
+    return dow2 < 5 ? { shift: 'Tr', type: 'treball' } : { shift: 'F', type: 'festa' };
+  }
+  return null;
+}
+
+function isValidQuadrant(q) {
+  return ['', '7x7-A', '7x7-B', 'Q3-1', 'Q3-2', 'Q3-3', 'Q5-1', 'Q5-2', 'Q5-3', 'Q5-4', 'Q5-5', 'LV'].indexOf(q) !== -1;
+}
+
+// ---------- Còpia local manual ----------
+async function exportBackup() {
+  try {
+    var atts = {};
+    for (var i = 0; i < items.length; i++) {
+      var fl = items[i].files || [];
+      for (var k = 0; k < fl.length; k++) {
+        var f = fl[k];
+        if (!f.link && f.id) {
+          try {
+            var b = await dbGet(f.id);
+            if (b) atts[f.id] = await blobToDataURL(b);
+          } catch (e) {}
+        }
+      }
+    }
+    var payload = { updatedAt: new Date().toISOString(), count: items.length, data: items, quadrant: selectedQuadrant, minutes: minutes, courts: courts, attachments: atts };
+    var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'judicis_backup.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+    localStorage.setItem('juicios_last_backup', new Date().toISOString());
+    if (view === 'calendar' || view === 'list') render();
+  } catch (e) {
+    alert('No s\'ha pogut exportar el fitxer.');
+  }
+}
+
+function checkAndImportBackup(event) {
+  var input = event.target;
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      var raw = JSON.parse(e.target.result);
+      var imported = sanitizeItems(Array.isArray(raw) ? raw : (raw.data || []));
+      if (!confirm('Vols restaurar les dades d\'aquest fitxer local? Se substituiran les dades actuals.')) return;
+      items = imported;
+      if (Array.isArray(raw.minutes)) { minutes = sanitizeMinutes(raw.minutes); try { localStorage.setItem('juicios_minutes', JSON.stringify(minutes)); } catch (x) {} }
+      if (raw.courts && typeof raw.courts === 'object') { courts = sanitizeCourts(raw.courts); try { localStorage.setItem('juicios_courts', JSON.stringify(courts)); } catch (x) {} }
+      if (isValidQuadrant(raw.quadrant)) {
+        selectedQuadrant = raw.quadrant;
+        localStorage.setItem('juicios_quadrant', selectedQuadrant);
+      }
+      var n = 0;
+      if (raw.attachments && typeof raw.attachments === 'object') {
+        for (var id in raw.attachments) {
+          var d = raw.attachments[id];
+          var cid = String(id).replace(/[^a-zA-Z0-9_-]/g, '');
+          if (cid && typeof d === 'string' && d.indexOf('data:') === 0) {
+            try { await dbPut(cid, await (await fetch(d)).blob()); n++; } catch (x) {}
+          }
+        }
+      }
+      await migrateFiles();
+      lsWrite();
+      render();
+      toast('Dades restaurades: ' + items.length + ' judicis, ' + n + ' adjunts ✓');
+    } catch (err) {
+      alert('Error en llegir el fitxer JSON.');
+    } finally {
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ---------- Llista i calendari ----------
+function backupBannerHTML() {
+  var last = localStorage.getItem('juicios_last_backup');
+  var days = last ? Math.floor((Date.now() - new Date(last).getTime()) / 86400000) : null;
+  var imp = '<label class="btn-label" style="margin:0;cursor:pointer">📤 Importar fitxer<input type="file" accept=".json,application/json,text/json,text/plain" style="position:absolute;opacity:0;width:1px;height:1px" onchange="checkAndImportBackup(event)"></label>';
+  if (!items.length) {
+    return '<div class="info-box warning"><b>No hi ha dades en aquest dispositiu.</b>'
+      + '<p class="mu" style="margin:4px 0 8px">Si ja tenies judicis, restaura\'ls des de Google Drive o des d\'un fitxer de còpia.</p>'
+      + '<div class="bar" style="margin-top:6px">'
+      + (dToken() ? '<button class="pri" onclick="syncDriveAuto(true)">🔄 Restaurar des de Drive</button>' : '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Drive</button>')
+      + imp + '</div></div>';
+  }
+  if (days === null || days >= 14) {
+    return '<div class="info-box warning"><b>' + (days === null ? 'Encara no has fet cap còpia de seguretat.' : 'Fa ' + days + ' dies que no fas cap còpia de seguretat.') + '</b>'
+      + '<div class="bar" style="margin-top:8px">'
+      + (dToken() ? '<button class="pri" onclick="saveToDrive(false)">☁️ Desar a Drive ara</button>' : '')
+      + '<button onclick="exportBackup()">📥 Exportar fitxer</button></div></div>';
+  }
+  return '';
+}
+
+function changePage(delta) {
+  currentPage += delta;
+  if (view === 'list') updateListOnly(); else render();
+}
+
+function changeMonth(delta) {
+  calDate = new Date(calDate.getFullYear(), calDate.getMonth() + delta, 1);
+  render();
+}
+
+function getFilteredList() {
+  var todayStr = localDateStr();
+  return items.filter(function(j) {
+    if (searchQuery) {
+      var haystack = [j.proc, j.expedient, j.atestado, j.juzgado, j.objecte, j.notas, j.denunciados, j.testigos, j.qualitat].map(function(s) { return (s || '').toLowerCase(); }).join(' ');
+      if (haystack.indexOf(searchQuery) === -1) return false;
+    }
+    // «Propers judicis» només amaga els passats quan no hi ha cap filtre d'estat actiu
+    if (sortBy === 'proximos' && filter === 'todos') {
+      if (!j.fecha || j.fecha < todayStr) return false;
+    }
+    return matchesFilter(j);
+  }).sort(function(a, b) {
+    if (sortBy === 'proximos' || sortBy === 'fecha_asc') return ((a.fecha || '') + (a.hora || '')).localeCompare((b.fecha || '') + (b.hora || ''));
+    if (sortBy === 'fecha_desc') return ((b.fecha || '') + (b.hora || '')).localeCompare((a.fecha || '') + (a.hora || ''));
+    if (sortBy === 'proc') return (a.proc || a.expedient || '').localeCompare(b.proc || b.expedient || '');
+    if (sortBy === 'juzgado') return (a.juzgado || '').localeCompare(b.juzgado || '');
+    if (sortBy === 'estado') return status(a)[0].localeCompare(status(b)[0]);
+    return 0;
+  });
+}
+
+function renderListHTML() {
+  var list = getFilteredList();
+  var totalItems = list.length;
+  var totalPages = pageSize === 0 ? 1 : Math.ceil(totalItems / pageSize) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  var startIdx = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
+  var endIdx = pageSize === 0 ? totalItems : Math.min(startIdx + pageSize, totalItems);
+  var pagedList = list.slice(startIdx, endIdx);
+
+  var html = '';
+  if (pagedList.length) {
+    pagedList.forEach(function(j) {
+      var st = status(j);
+      var dayInfo = j.fecha ? getDayCobroInfo(j.fecha) : { isDouble: false };
+      var shiftInfo = (j.fecha && selectedQuadrant) ? getShiftForDate(selectedQuadrant, j.fecha) : null;
+
+      html += '<div class="card item" onclick="edit(\'' + j.id + '\')">';
+      html += '<b>' + esc(j.proc || j.expedient || 'Sense núm. de procediment') + ' — ' + esc(j.objecte || '') + '</b>';
+      html += '<span class="mu">' + fmt(j.fecha) + ' ' + esc(j.hora) + ' ' + esc(j.sala) + '<br>' + esc(j.juzgado) + '</span>';
+      html += '<div class="row"><span class="tag ' + st[1] + '">' + st[0] + '</span>';
+      if (dayInfo.isDouble) html += '<span class="tag double-tag">⚡ 2n Cobrament (>3h)</span>';
+      if (shiftInfo) {
+        html += '<span class="tag" style="' + (shiftInfo.type === 'festa' ? 'color:var(--festa-tx);border-color:var(--festa-tx)' : 'color:var(--treball-tx);border-color:var(--treball-tx)') + '">Torn: ' + shiftInfo.shift + '</span>';
+      }
+      var jc = j.juzgado ? getCourt(j.juzgado) : null;
+      if (jc && jc.rating) html += '<span class="tag s-star">★ ' + jc.rating + '</span>';
+      if (j.qualitat) html += '<span class="tag">' + esc(j.qualitat) + '</span>';
+      if (j.justificante) html += '<span class="tag ok">Justificant</span>';
+      if (j.files && j.files.length) html += '<span class="tag">📎 ' + j.files.length + '</span>';
+      if (j.celebrado === 'si') html += '<span class="tag">' + (j.modalidad === 'video' ? 'Videoconferència' : 'Presencial') + '</span>';
+      html += '</div></div>';
+    });
+
+    if (pageSize > 0 && totalPages > 1) {
+      html += '<div class="pagination">';
+      html += '<button onclick="changePage(-1)" ' + (currentPage === 1 ? 'disabled' : '') + '>◀ Anterior</button>';
+      html += '<span class="pagination-info">Pàgina ' + currentPage + ' de ' + totalPages + ' (' + totalItems + ' registre' + (totalItems > 1 ? 's' : '') + ')</span>';
+      html += '<button onclick="changePage(1)" ' + (currentPage === totalPages ? 'disabled' : '') + '>Següent ▶</button>';
+      html += '</div>';
+    }
+  } else {
+    html += '<p class="mu">No s\'ha trobat cap judici amb aquesta cerca o combinació de filtre.</p>';
+  }
+  return html;
+}
+
+function updateListOnly() {
+  var container = $('#listContainer');
+  if (container) container.innerHTML = renderListHTML();
+  var clearBtn = $('#searchClearBtn');
+  if (clearBtn) clearBtn.style.display = searchQuery ? 'block' : 'none';
+}
+
+function renderCalendar() {
+  var year = calDate.getFullYear();
+  var month = calDate.getMonth();
+
+  var firstDay = new Date(year, month, 1);
+  var lastDay = new Date(year, month + 1, 0);
+
+  var startDayOfWeek = (firstDay.getDay() + 6) % 7;
+  var totalDays = lastDay.getDate();
+
+  var monthNames = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
+  var todayStr = localDateStr();
+
+  var html = '<div class="card" style="padding:10px">';
+  html += '<div class="cal-header">';
+  html += '<button onclick="changeMonth(-1)">◀</button>';
+  html += '<span class="cal-title">' + monthNames[month] + ' ' + year + '</span>';
+  html += '<div style="display:flex;gap:4px">';
+  html += '<button onclick="calDate=new Date();render()">Avui</button>';
+  html += '<button onclick="changeMonth(1)">▶</button>';
+  html += '</div></div>';
+
+  html += '<div class="cal-wrapper"><div class="cal-grid">';
+  ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'].forEach(function(d) {
+    html += '<div class="cal-day-name">' + d + '</div>';
+  });
+
+  var prevMonthLastDay = new Date(year, month, 0).getDate();
+  for (var i = startDayOfWeek - 1; i >= 0; i--) {
+    html += '<div class="cal-day other-month"><span class="cal-day-num">' + (prevMonthLastDay - i) + '</span></div>';
+  }
+
+  for (var day = 1; day <= totalDays; day++) {
+    var mStr = String(month + 1).padStart(2, '0');
+    var dStr = String(day).padStart(2, '0');
+    var dateKey = year + '-' + mStr + '-' + dStr;
+    var isToday = dateKey === todayStr;
+
+    var allDay = items.filter(function(j) { return j.fecha === dateKey; });
+    allDay.sort(function(a, b) { return (a.hora || '').localeCompare(b.hora || ''); });
+    var dayEvents = allDay.filter(matchesFilter);
+    var dayInfo = getDayCobroInfo(dateKey);
+    var shiftInfo = selectedQuadrant ? getShiftForDate(selectedQuadrant, dateKey) : null;
+
+    var dayClasses = 'cal-day' + (isToday ? ' today' : '');
+    if (shiftInfo) {
+      if (shiftInfo.type === 'festa') dayClasses += ' day-festa';
+      else if (shiftInfo.type === 'treball') dayClasses += ' day-treball';
+    }
+
+    html += '<div class="' + dayClasses + '">';
+    html += '<div class="cal-day-header">';
+    if (shiftInfo) html += '<span class="cal-day-badge">' + shiftInfo.shift + '</span>';
+    else html += '<span></span>';
+    html += '<span class="cal-day-num">' + day + '</span>';
+    html += '</div>';
+
+    dayEvents.forEach(function(j, idx) {
+      var st = status(j);
+      var isSecondCobro = (dayInfo.isDouble && allDay.indexOf(j) > 0);
+      var extraClass = isSecondCobro ? ' double-cobro' : (' ' + st[1]);
+      var label = (j.hora ? j.hora + ' ' : '') + (j.proc || j.objecte || 'Judici') + (isSecondCobro ? ' (2n cobram.)' : '');
+      html += '<div class="cal-event' + extraClass + '" title="' + esc(label) + '" onclick="event.stopPropagation();edit(\'' + j.id + '\')">' + esc(label) + '</div>';
+    });
+
+    html += '</div>';
+  }
+
+  var totalCells = startDayOfWeek + totalDays;
+  var nextDays = (7 - (totalCells % 7)) % 7;
+  for (var n = 1; n <= nextDays; n++) {
+    html += '<div class="cal-day other-month"><span class="cal-day-num">' + n + '</span></div>';
+  }
+
+  html += '</div></div>';
+  html += '<div class="cal-legend">';
+  ['fut', 'rev', 'nojus', 'nodad', 'dad', 'pag', 'sus'].forEach(function(k) {
+    html += '<span class="lg"><i class="dot s-' + k + '"></i>' + STATE_LEGEND[k] + '</span>';
+  });
+  html += '<span class="lg"><i class="dot double-cobro"></i>2n cobrament (&gt;3h)</span></div>';
+  html += '</div>';
+  return html;
+}
+
+// ---------- Render principal ----------
+function render() {
+  var app = $('#app');
+  if (!app) return;
+
+  var logoSvg = '<div class="brand-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M256 120 v200 M160 180 h192 M160 180 l-40 80 h80 z M352 180 l-40 80 h80 z M200 320 h112 M220 350 h72" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="380" cy="130" r="30" fill="#58c58a"/></svg></div>';
+
+  if (view === 'calendar' || view === 'list') {
+    var html = '<h1><div class="brand">' + logoSvg + '<span>Judicis</span></div><button class="pri" onclick="edit()">+ Nou</button></h1>';
+    html += backupBannerHTML();
+
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    html += '<div class="view-switcher">';
+    html += '<button class="view-btn' + (view === 'calendar' ? ' active' : '') + '" onclick="setMainView(\'calendar\')">📅 Calendari</button>';
+    html += '<button class="view-btn' + (view === 'list' ? ' active' : '') + '" onclick="setMainView(\'list\')">📋 Llista</button>';
+    html += '</div>';
+    html += '</div>';
+
+    // Desplegable de Quadrant (Només 7x7)
+    html += '<div class="quadrant-box">';
+    html += '<span>🛡️</span>';
+    html += '<label for="quadrantSelect">Quadrant laboral:</label>';
+    html += '<select id="quadrantSelect" onchange="setQuadrant(this.value)">';
+    html += '<option value=""' + (!selectedQuadrant ? ' selected' : '') + '>Sense quadrant (cap)</option>';
+    html += '<option value="7x7-A"' + (selectedQuadrant === '7x7-A' ? ' selected' : '') + '>7x7 - Escamot A</option>';
+    html += '<option value="7x7-B"' + (selectedQuadrant === '7x7-B' ? ' selected' : '') + '>7x7 - Escamot B</option>';
+    html += '<option value="Q3-1"' + (selectedQuadrant === 'Q3-1' ? ' selected' : '') + '>Q3 - Esc. 1</option>';
+    html += '<option value="Q3-2"' + (selectedQuadrant === 'Q3-2' ? ' selected' : '') + '>Q3 - Esc. 2</option>';
+    html += '<option value="Q3-3"' + (selectedQuadrant === 'Q3-3' ? ' selected' : '') + '>Q3 - Esc. 3</option>';
+    html += '<option value="Q5-1"' + (selectedQuadrant === 'Q5-1' ? ' selected' : '') + '>Q5 - Esc. 1</option>';
+    html += '<option value="Q5-2"' + (selectedQuadrant === 'Q5-2' ? ' selected' : '') + '>Q5 - Esc. 2</option>';
+    html += '<option value="Q5-3"' + (selectedQuadrant === 'Q5-3' ? ' selected' : '') + '>Q5 - Esc. 3</option>';
+    html += '<option value="Q5-4"' + (selectedQuadrant === 'Q5-4' ? ' selected' : '') + '>Q5 - Esc. 4</option>';
+    html += '<option value="Q5-5"' + (selectedQuadrant === 'Q5-5' ? ' selected' : '') + '>Q5 - Esc. 5</option>';
+    html += '<option value="LV"' + (selectedQuadrant === 'LV' ? ' selected' : '') + '>Dilluns a divendres (festa cap de setmana)</option>';
+    html += '</select>';
+    html += '</div>';
+
+    if (view === 'calendar') {
+      html += '<div class="quadrant-box"><span>🎯</span><label for="calFilter">Filtrar:</label><select id="calFilter" onchange="setFilter(this.value)" style="flex:1;min-width:0">' + filterOptionsHTML() + '</select></div>';
+      html += renderCalendar();
+    } else {
+      html += '<div class="search-box">';
+      html += '<span class="search-icon">🔍</span>';
+      html += '<input type="text" id="searchInput" placeholder="Cercar procediment, atestat, jutjat..." value="' + esc(searchQuery) + '" oninput="setSearch(this.value)">';
+      html += '<button id="searchClearBtn" class="search-clear" onclick="clearSearch()" style="' + (searchQuery ? 'display:block' : 'display:none') + '">&times;</button>';
+      html += '</div>';
+
+      html += '<div class="g2" style="margin-bottom:8px">';
+      html += '<div><label style="margin:0 0 2px 2px">Filtrar</label>';
+      html += '<select onchange="setFilter(this.value)">' + filterOptionsHTML() + '</select></div>';
+
+      html += '<div><label style="margin:0 0 2px 2px">Ordenar per</label>';
+      html += '<select onchange="setSort(this.value)">';
+      html += '<option value="proximos"' + (sortBy === 'proximos' ? ' selected' : '') + '>🔮 Propers judicis (de més a menys proper)</option>';
+      html += '<option value="fecha_desc"' + (sortBy === 'fecha_desc' ? ' selected' : '') + '>📅 Data (més recents primer)</option>';
+      html += '<option value="fecha_asc"' + (sortBy === 'fecha_asc' ? ' selected' : '') + '>📅 Data (més antics primer)</option>';
+      html += '<option value="proc"' + (sortBy === 'proc' ? ' selected' : '') + '>📄 Núm. procediment / exp.</option>';
+      html += '<option value="juzgado"' + (sortBy === 'juzgado' ? ' selected' : '') + '>🏛️ Òrgan jurisdiccional</option>';
+      html += '<option value="estado"' + (sortBy === 'estado' ? ' selected' : '') + '>🏷️ Estat / Situació</option>';
+      html += '</select></div>';
+      html += '</div>';
+
+      html += '<div style="margin-bottom:12px"><label style="margin:0 0 2px 2px">Mostrar</label>';
+      html += '<select onchange="pageSize=Number(this.value);currentPage=1;render()">';
+      html += '<option value="10"' + (pageSize === 10 ? ' selected' : '') + '>10 per pàgina</option>';
+      html += '<option value="20"' + (pageSize === 20 ? ' selected' : '') + '>20 per pàgina</option>';
+      html += '<option value="50"' + (pageSize === 50 ? ' selected' : '') + '>50 per pàgina</option>';
+      html += '<option value="0"' + (pageSize === 0 ? ' selected' : '') + '>Tots</option>';
+      html += '</select></div>';
+
+      html += '<div id="listContainer">' + renderListHTML() + '</div>';
+    }
+
+    html += '<div class="card" style="margin-top:18px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Bústia de minutes</h2>';
+    html += '<p class="mu" style="margin-top:0">Guarda una minuta amb el número d\'atestat i recupera-la en donar d\'alta el judici.' + (minutes.length ? ' Ara n\'hi ha <b>' + minutes.length + '</b> de pendents.' : '') + '</p>';
+    html += '<div class="bar" style="margin-top:8px"><button class="pri" onclick="openMinutes()">📥 Obrir la bústia de minutes</button></div></div>';
+
+    html += '<div class="card" style="margin-top:10px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Jutjats</h2>';
+    html += '<p class="mu" style="margin-top:0">Valora els jutjats amb estrelles i guarda comentaris (WebEx, tracte, retards…).</p>';
+    html += '<div class="bar" style="margin-top:8px"><button class="pri" onclick="openCourts()">⭐ Obrir les valoracions de jutjats</button></div></div>';
+
+    html += '<div class="card" style="margin-top:10px"><h2 style="border:0;margin:0 0 8px 0;padding:0">Sincronització automàtica amb Google Drive</h2>';
+    if (dToken()) {
+      html += '<p class="mu" style="margin-top:0">✅ Connectat amb Google Drive. La còpia inclou els judicis i els fitxers adjunts (carpeta «Judicis - adjunts»).</p>';
+      html += '<div class="bar" style="margin-top:8px">';
+      html += '<button class="pri" onclick="saveToDrive(false)">☁️ Desar / Actualitzar a Drive</button>';
+      html += '<button onclick="syncDriveAuto(true)">🔄 Comprovar canvis ara</button>';
+      html += '</div>';
+    } else {
+      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
+      html += '<div class="bar" style="margin-top:8px">';
+      html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
+      html += '<button onclick="obrirModalDrive()">ℹ️ Info / Sol·licitar accés</button>';
+      html += '</div>';
+    }
+
+    html += '<h2>Còpia local manual (JSON)</h2>';
+    html += '<p class="mu" style="margin:6px 0 0">Aquest fitxer sí inclou els adjunts.</p>';
+    html += '<div class="bar" style="margin-top:8px">';
+    html += '<button onclick="exportBackup()">📥 Exportar fitxer</button>';
+    html += '<label class="btn-label" style="margin:0;cursor:pointer">📤 Importar fitxer<input type="file" id="fileImport" accept=".json,application/json,text/json,text/plain" style="position:absolute;opacity:0;width:1px;height:1px" onchange="checkAndImportBackup(event)"></label>';
+    html += '</div></div>';
+
+    html += '<p class="mu">Les dades i els adjunts es desen localment al navegador d\'aquest dispositiu.</p>';
+    app.innerHTML = html;
+    return;
+  }
+
+  if (view === 'minutes') { app.innerHTML = renderMinutesHTML(); return; }
+  if (view === 'minutaview') { app.innerHTML = renderMinutaReaderHTML(); return; }
+  if (view === 'courts') { app.innerHTML = renderCourtsHTML(); return; }
+  if (view === 'court') { app.innerHTML = renderCourtHTML(); return; }
+
+  var j = cur;
+  var v = function(k) { return esc(j[k] || ''); };
+  var ck = function(k) { return j[k] ? 'checked' : ''; };
+  var isNew = !items.some(function(x) { return x.id === j.id; });
+  var isCelebrado = (j.celebrado === 'si');
+  var dayInfo = j.fecha ? getDayCobroInfo(j.fecha) : { isDouble: false };
+
+  var fHtml = '<h1>' + (isNew ? 'Nou judici' : 'Judici') + ' <button onclick="requestCloseForm()">Tancar</button></h1>';
+  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Dades del judici</h2>';
+  if (isNew) {
+    fHtml += '<label>Enganxar la citació o minuta (omple els camps automàticament)</label><textarea id="paste" placeholder="Enganxa aquí el text de la citació o de la minuta…"></textarea><div class="bar" style="margin-top:6px"><button onclick="parsePaste()">Omplir des del text</button></div>';
+  }
+  fHtml += '<label>Expedient</label><input id="expedient" value="' + v('expedient') + '">';
+  fHtml += '<div class="g2"><div><label>Procediment</label><input id="proc" value="' + v('proc') + '"></div><div><label>Atestat</label><input id="atestado" value="' + v('atestado') + '" onchange="onAtestatChange()"></div></div>';
+  fHtml += '<label>Òrgan jurisdiccional</label><input id="juzgado" value="' + v('juzgado') + '">';
+  var cinfo = j.juzgado ? getCourt(j.juzgado) : null;
+  fHtml += '<div class="bar" style="margin-top:6px"><button type="button" onclick="openCourtFromForm()">⭐ ' + (cinfo && cinfo.rating ? starsText(cinfo.rating) + ' · ' : '') + (cinfo && cinfo.comments.length ? cinfo.comments.length + ' comentari(s)' : 'Valorar el jutjat') + '</button></div>';
+  fHtml += '<label>Adreça</label><input id="adreca" value="' + v('adreca') + '">';
+  fHtml += '<label>Correu del jutjat (opcional)</label><input id="emailJutjat" type="email" value="' + v('emailJutjat') + '">';
+  fHtml += '<div class="g2"><div><label>Telèfon</label><input id="telefon" type="tel" value="' + v('telefon') + '"></div><div><label>Fax</label><input id="fax" type="tel" value="' + v('fax') + '"></div></div>';
+  fHtml += '<div class="g2"><div><label>Qualitat de la compareixença</label><input id="qualitat" value="' + v('qualitat') + '"></div><div><label>Sala</label><input id="sala" value="' + v('sala') + '"></div></div>';
+  fHtml += '<label>Objecte de la compareixença</label><input id="objecte" value="' + v('objecte') + '">';
+  fHtml += '<div class="g2"><div><label>Data</label><input type="date" id="fecha" value="' + v('fecha') + '"></div><div><label>Hora</label><input type="time" id="hora" value="' + v('hora') + '"></div></div>';
+
+  fHtml += '<label>Modalitat prevista</label><select id="modalidadPrev"><option value="presencial"' + (j.modalidadPrev !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidadPrev === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
+  fHtml += '<label>Notes</label><textarea id="notas">' + v('notas') + '</textarea>';
+  fHtml += '<div class="bar"><a class="btn pri" id="cal" target="_blank" rel="noopener" onclick="sync()" href="' + esc(calUrl(j)) + '">📅 Afegir a Google Calendar</a><button type="button" onclick="openWebexModal()">✉️ Sol·licitar assistència telemàtica</button></div>';
+  fHtml += '<p class="mu">S\'obre Google Calendar amb l\'esdeveniment a punt per confirmar.</p></div>';
+
+  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Seguiment</h2>';
+  fHtml += '<label>S\'ha celebrat?</label><select id="celebrado" onchange="onCelebradoChange(this.value)">';
+  [['', 'Pendent'], ['si', 'Sí'], ['no', 'No'], ['suspendido', 'Suspès']].forEach(function(o) {
+    fHtml += '<option value="' + o[0] + '"' + ((j.celebrado || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+  });
+  fHtml += '</select>';
+  fHtml += '<label>Modalitat real</label><select id="modalidad"><option value="presencial"' + (j.modalidad !== 'video' ? ' selected' : '') + '>Presencial</option><option value="video"' + (j.modalidad === 'video' ? ' selected' : '') + '>Videoconferència</option></select>';
+  fHtml += '<label>Hora de sortida</label><input type="time" id="salida" value="' + v('salida') + '">';
+
+  fHtml += '<label>Minuta policial</label><textarea id="minuta" placeholder="Enganxa aquí la minuta policial si l\'has aconseguit posteriorment…">' + v('minuta') + '</textarea>';
+  if ((j.minuta || '').trim()) fHtml += '<div class="bar" style="margin-top:6px"><button type="button" onclick="openMinutaReader()">📖 Llegir la minuta (vista de lectura)</button></div>';
+  var mmatch = (j.atestado && !(j.minuta || '').trim()) ? findMinute(j.atestado) : null;
+  if (mmatch) fHtml += '<div class="bar" style="margin-top:6px"><button type="button" class="pri" onclick="recoverMinuteBtn()">📥 Recuperar minuta de la bústia (atestat ' + esc(mmatch.atestado) + ')</button></div>';
+  if (!(j.minuta || '').trim() && minutes.length) {
+    var mopts = minutes.slice().sort(function(a, b) {
+      var ra = sameAtestat(a.atestado, j.atestado) ? 0 : 1, rb = sameAtestat(b.atestado, j.atestado) ? 0 : 1;
+      return (ra - rb) || String(b.savedAt).localeCompare(String(a.savedAt));
+    });
+    fHtml += '<label>O triar una minuta de la bústia (' + minutes.length + ')</label><select onchange="pickMinute(this.value)"><option value="">— Tria una minuta —</option>';
+    mopts.forEach(function(m) {
+      fHtml += '<option value="' + m.id + '">' + (sameAtestat(m.atestado, j.atestado) ? '✔ ' : '') + 'Atestat ' + esc(m.atestado) + '</option>';
+    });
+    fHtml += '</select>';
+  }
+  fHtml += '<div class="bar" style="margin-top:6px;margin-bottom:12px"><button type="button" onclick="parseExistingMinuta()">🔍 Extreure detinguts i TIPs de la minuta</button></div>';
+
+  fHtml += '<label>Persones denunciades</label><textarea id="denunciados" placeholder="Detinguts o investigats…">' + v('denunciados') + '</textarea>';
+  fHtml += '<label>Testimonis / agents compareixents</label><textarea id="testigos" placeholder="Agents TIPs o testimonis…">' + v('testigos') + '</textarea>';
+  fHtml += '<h2>Cobrament</h2>';
+
+  if (dayInfo.isDouble) {
+    fHtml += '<div class="info-box double" style="margin:10px 0">';
+    fHtml += '<b style="color:var(--double);font-size:14px;display:block">⚡ Aquesta jornada supera les 3 hores entre judicis!</b>';
+    fHtml += '<p class="mu" style="margin:4px 0 0;font-size:12px">Aquest dia hi ha ' + dayInfo.count + ' judicis registrats amb un temps transcorregut superior a 3h. Tens dret a <b>2 cobraments / assistències</b> per aquesta jornada.</p>';
+    fHtml += '</div>';
+  }
+
+  fHtml += '<label class="chk"><input type="checkbox" id="justificante" ' + ck('justificante') + '> Tinc el justificant</label>';
+  fHtml += '<label class="chk' + (!isCelebrado ? ' disabled' : '') + '"><input type="checkbox" id="dad67" ' + ck('dad67') + ' ' + (!isCelebrado ? 'disabled' : '') + '> Sol·licitud DAD 67 presentada' + (!isCelebrado ? ' (cal marcar el judici com a celebrat)' : '') + '</label>';
+  fHtml += '<div id="d1"><label>Data de presentació</label><input type="date" id="dad67Fecha" value="' + v('dad67Fecha') + '" ' + (!isCelebrado ? 'disabled' : '') + '></div>';
+  fHtml += '<label class="chk"><input type="checkbox" id="cobrado" ' + ck('cobrado') + '> Cobrat</label>';
+  fHtml += '<div><label>Data de cobrament</label><input type="date" id="cobradoFecha" value="' + v('cobradoFecha') + '"></div></div>';
+
+  fHtml += '<div class="card"><h2 style="border:0;margin:0;padding:0">Fitxers de l\'expedient</h2>';
+  if (j.files && j.files.length) {
+    j.files.forEach(function(f, i) {
+      var a = f.link
+        ? '<a href="' + esc(f.url) + '" target="_blank" rel="noopener">📎 ' + esc(f.name) + '</a>'
+        : '<a href="#" onclick="openFile(' + i + ');return false">📎 ' + esc(f.name) + '</a>';
+      fHtml += '<div class="row" style="align-items:center;justify-content:space-between">' + a + '<button class="dan" onclick="rmFile(' + i + ')">Treure</button></div>';
+    });
+  } else {
+    fHtml += '<p class="mu">Sense fitxers.</p>';
+  }
+
+  fHtml += '<label style="margin-top:10px">Pujar fitxer local (PDF, imatge...)</label>';
+  fHtml += '<input type="file" id="fileDirect" onchange="uploadFile(event)">';
+  fHtml += '<p class="mu" style="margin:4px 0 0">Els fitxers es guarden en aquest dispositiu i, amb Drive connectat, també a Google Drive.</p>';
+
+  fHtml += '<label style="margin-top:10px">O afegir un enllaç extern (Drive, Dropbox...)</label><input id="lname" placeholder="Nom (opcional)"><input id="lurl" type="url" placeholder="https://…" style="margin-top:6px"><div class="bar" style="margin-top:6px"><button type="button" onclick="addLink()">Afegir enllaç</button></div></div>';
+
+  fHtml += '<div class="bar"><button class="pri" onclick="sv()">Desar</button>' + (isNew ? '' : '<button class="dan" onclick="del()">Eliminar</button>') + '</div>';
+
+  app.innerHTML = fHtml;
+}
+
+function onCelebradoChange(val) {
+  collect();
+  if (val !== 'si') cur.dad67 = false;
+  render();
+}
+
+var F = ['expedient','proc','atestado','juzgado','adreca','fax','telefon','emailJutjat','sala','qualitat','objecte','fecha','hora','modalidadPrev','notas','celebrado','modalidad','llegada','salida','minuta','denunciados','testigos','dad67Fecha','cobradoFecha'];
+var C = ['justificante','dad67','cobrado'];
+
+function collect() {
+  F.forEach(function(k) { if ($('#' + k)) cur[k] = $('#' + k).value; });
+  C.forEach(function(k) { if ($('#' + k)) cur[k] = $('#' + k).checked; });
+}
+
+function sync() { collect(); $('#cal').href = calUrl(cur); }
+function sv() {
+  collect();
+  save(cur);
+  if (pendingMinuteId && (cur.minuta || '').trim()) removeMinute(pendingMinuteId);
+  pendingMinuteId = null;
+  saveToDrive(true);
+  back();
+}
+function del() {
+  if (confirm('Vols eliminar aquest judici?')) {
+    remove(cur.id);
+    saveToDrive(true);
+    back();
+  }
+}
+
+async function uploadFile(event) {
+  collect();
+  var input = event.target;
+  var file = input.files[0];
+  if (!file) return;
+  try {
+    var id = newFileId();
+    await dbPut(id, file);
+    cur.files = cur.files || [];
+    cur.files.push({ id: id, name: file.name, type: file.type || '', link: false });
+    save(cur);
+    render();
+  } catch (e) {
+    alert('No s\'ha pogut desar el fitxer en aquest dispositiu.');
+    input.value = '';
+  }
+}
+
+async function openFile(i) {
+  var f = cur && cur.files && cur.files[i];
+  if (!f || f.link) return;
+  try {
+    var b = f.id ? await dbGet(f.id) : null;
+    if (!b && f.id && f.driveId) {
+      if (!dToken()) { alert('Aquest fitxer és a Google Drive. Connecta Drive (pantalla principal) per baixar-lo.'); return; }
+      toast('Baixant de Drive…');
+      b = await (await driveFetch(DRIVE_API + '/' + f.driveId + '?alt=media')).blob();
+      await dbPut(f.id, b);
+    }
+    if (!b) { alert('Aquest fitxer no està disponible en aquest dispositiu.'); return; }
+    var u = URL.createObjectURL(b);
+    var a = document.createElement('a');
+    a.href = u;
+    a.download = f.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(u); }, 15000);
+  } catch (e) {
+    alert('No s\'ha pogut obrir el fitxer.' + (e && e.message ? '\n' + e.message : ''));
+  }
+}
+
+function addLink() {
+  collect();
+  var u = $('#lurl').value.trim();
+  if (!/^https?:\/\//i.test(u)) { alert('Escriu un enllaç que comenci per https://'); return; }
+  cur.files = cur.files || [];
+  cur.files.push({ name: $('#lname').value.trim() || u, url: u, link: true });
+  save(cur);
+  render();
+}
+
+function rmFile(i) {
+  collect();
+  var f = cur.files[i];
+  cur.files.splice(i, 1);
+  if (f && !f.link && f.id) dbDel(f.id).catch(function() {});
+  if (f && f.driveId) queueDriveDelete(f.driveId);
+  save(cur);
+  render();
+}
+
+// ---------- Extracció de dades de la minuta ----------
+// Persones detenudes: línies del bloc «Dades de la detenció» amb el format «Nom COGNOMS nascut/da ...»
+function extractDetinguts(t) {
+  var txt = String(t || '');
+  var out = [];
+  var add = function(n) {
+    n = String(n || '').replace(/\s+/g, ' ').trim();
+    if (n.length < 3 || n.length > 80 || /\d/.test(n)) return;
+    if (out.some(function(x) { return x.toLowerCase() === n.toLowerCase(); })) return;
+    out.push(n);
+  };
+
+  var start = txt.search(/dades de la detenci[óo]/i);
+  var scope = start >= 0 ? txt.slice(start) : txt;
+  var end = scope.search(/que (?:han|ha) estat detingut/i);
+  if (end > 0) scope = scope.slice(0, end);
+
+  var re = /^[ \t]*(?:[-–•.]+[ \t]*)?([^\n\d]{3,80}?)[ \t]+nasc(?:ut|uda)\b/gim;
+  var m;
+  while ((m = re.exec(scope)) !== null) add(m[1]);
+
+  if (!out.length) { // formats antics (compatibilitat)
+    var m1 = txt.matchAll(/-\s*([A-Za-zÀ-ÿ\s]+)\s+nasc(?:ut|uda)\s+/gi);
+    for (var a1 of m1) add(a1[1]);
+    var m2 = txt.matchAll(/Sr\.\s+([A-Za-zÀ-ÿ\s]+)(?:amb|\,)/gi);
+    for (var a2 of m2) add(a2[1]);
+  }
+  return out;
+}
+
+// Agents actuants: TIPs del bloc «per:» fins a «com a presumptes autors» (exclou vigilants, testimonis...)
+function extractTips(t) {
+  var txt = String(t || '');
+  var scope = txt;
+  var a = txt.search(/(?:^|\n)[ \t]*per:[ \t]*(?:\r?\n|$)/i);
+  if (a >= 0) {
+    var rest = txt.slice(a);
+    var b = rest.search(/com a presumpt/i);
+    scope = b > 0 ? rest.slice(0, b) : rest;
+  }
+  var found = scope.match(/TIP\s*(\d+)/gi);
+  if (!found && scope !== txt) found = txt.match(/TIP\s*(\d+)/gi);
+  var out = [];
+  (found || []).forEach(function(item) {
+    var f = 'TIP ' + item.replace(/TIP\s*/i, '').trim();
+    if (out.indexOf(f) === -1) out.push(f);
+  });
+  return out;
+}
+
+function mergeLines(existing, extra) {
+  var list = existing ? String(existing).split('\n').map(function(x) { return x.trim(); }).filter(Boolean) : [];
+  extra.forEach(function(x) {
+    if (!list.some(function(y) { return y.toLowerCase() === x.toLowerCase(); })) list.push(x);
+  });
+  return list.join('\n');
+}
+
+function parseExistingMinuta() {
+  collect();
+  var t = cur.minuta || '';
+  if (!t.trim()) {
+    alert('Afegeix primer el text de la minuta al camp corresponent.');
+    return;
+  }
+  var tips = extractTips(t);
+  var det = extractDetinguts(t);
+
+  cur.testigos = mergeLines(cur.testigos, tips);
+  cur.denunciados = mergeLines(cur.denunciados, det);
+
+  render();
+  if (!det.length) alert('No he trobat cap persona detinguda o investigada a la minuta. Revisa que hi hagi el bloc «Dades de la detenció».');
+  else toast('Extrets: ' + det.length + ' detingut(s)/investigat(s) i ' + tips.length + ' TIP(s) ✓');
+}
+
+function parsePaste() {
+  collect();
+  var t = $('#paste').value;
+  var g = function(r) { var m = t.match(r); return m ? m[1].trim() : ''; };
+  var st = function(k, val) { if (val) cur[k] = val; };
+
+  st('expedient', g(/Expedient:?\s*([^\n]+)/i));
+  st('juzgado', g(/[ÒO]rgan jurisdiccional:?\s*([^\n]+)/i));
+  st('adreca', g(/Adre[çc]a:?\s*([^\n]+)/i));
+  st('fax', g(/Fax:?\s*([^\n]+)/i));
+  st('telefon', g(/Tel[èe]fon:?\s*([^\n]+)/i));
+  var emailsFound = (t.match(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}/g) || []).filter(function(e, i, a) { return a.indexOf(e) === i; });
+  if (emailsFound.length === 1) st('emailJutjat', emailsFound[0]);
+
+  var d = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})[ \t]*([^\n]*)/);
+  if (d) {
+    cur.fecha = d[3] + '-' + d[2].padStart(2, '0') + '-' + d[1].padStart(2, '0');
+    cur.hora = d[4].padStart(2, '0') + ':' + d[5];
+    cur.sala = d[6].trim();
+  }
+
+  st('atestado', g(/Atestat:?\s*([^\n]+)/i).split(/\s+(?:Procediment|Qualitat|Objecte|Expedient|Fax|Tel[èe]fon|Adre[çc]a|[ÒO]rgan)\b/i)[0].trim());
+  st('proc', g(/Procediment:?\s*([^\n]+)/i));
+  st('qualitat', g(/Qualitat de la Compareixen[çc]a:?\s*([^\n]+)/i));
+  st('objecte', g(/Objecte de la compareixen[çc]a:?\s*([^\n]+)/i));
+
+  var tips = extractTips(t);
+  if (tips.length) cur.testigos = tips.join('\n');
+
+  var det = extractDetinguts(t);
+  if (det.length) cur.denunciados = det.join('\n');
+
+  if (t.toUpperCase().indexOf('MINUTA POLICIAL') !== -1) cur.minuta = t;
+
+  render();
+  offerMinute();
+}
+
+function edit(id) {
+  if (id) {
+    var found = items.filter(function(x) { return x.id === id; })[0];
+    if (!found) return;
+    cur = Object.assign({}, found);
+    cur.files = (found.files || []).map(function(f) { return Object.assign({}, f); });
+  } else {
+    cur = { id: 'j' + Date.now().toString(36), files: [] };
+  }
+  view = 'form';
+  pushSub();
+  render();
+  collect();
+  formSnapshot = snapshotOf(cur);
+  window.scrollTo(0, 0);
+}
+
+// ---------- Canvis sense desar i navegació (inclou el botó enrere d'Android) ----------
+var formSnapshot = '';
+var subDepth = 0;
+var leaving = false;
+
+function snapshotOf(o) {
+  var out = {};
+  F.forEach(function(k) { out[k] = (o && o[k]) ? String(o[k]) : ''; });
+  C.forEach(function(k) { out[k] = !!(o && o[k]); });
+  return JSON.stringify(out);
+}
+
+function isFormDirty() {
+  if (!cur) return false;
+  collect();
+  return snapshotOf(cur) !== formSnapshot;
+}
+
+function pushSub() {
+  try { history.pushState({ juicios: 1 }, ''); subDepth++; } catch (e) {}
+}
+
+function leaveSub() {
+  if (subDepth > 0) {
+    leaving = true;
+    history.back();
+    setTimeout(function() { if (leaving) { leaving = false; subDepth = 0; doBack(); } }, 400);
+  } else {
+    doBack();
+  }
+}
+
+function requestCloseForm() {
+  if (isFormDirty()) askSaveBeforeLeave(); else leaveSub();
+}
+
+function closeLeaveModal() {
+  var m = $('#modalLeave');
+  if (m) m.remove();
+}
+
+function askSaveBeforeLeave() {
+  closeLeaveModal();
+  var ov = document.createElement('div');
+  ov.id = 'modalLeave';
+  ov.className = 'modal-overlay';
+  ov.innerHTML = '<div class="modal-card"><h3 style="margin:4px 0 8px;font-size:18px">Canvis sense desar</h3>'
+    + '<p class="mu" style="font-size:14px">Has fet canvis en aquest judici que encara no s\'han desat. Què vols fer?</p>'
+    + '<div class="bar"><button class="pri" onclick="leaveSave()">💾 Desar i sortir</button><button class="dan" onclick="leaveDiscard()">Sortir sense desar</button><button onclick="closeLeaveModal()">Continuar editant</button></div></div>';
+  document.body.appendChild(ov);
+}
+
+function leaveSave() { closeLeaveModal(); sv(); }
+function leaveDiscard() { closeLeaveModal(); leaveSub(); }
+
+function back() { leaveSub(); }
+
+function doBack() {
+  view = localStorage.getItem('juicios_view') || 'calendar';
+  if (view !== 'calendar' && view !== 'list') view = 'calendar';
+  cur = null;
+  pendingMinuteId = null;
+  render();
+}
+
+window.addEventListener('popstate', function() {
+  if (subDepth > 0) subDepth--;
+  if (leaving) { leaving = false; doBack(); return; }
+  if ($('#modalWebex') || $('#modalLeave')) { closeWebexModal(); closeLeaveModal(); pushSub(); return; }
+  if (view === 'minutaview') { view = 'form'; render(); window.scrollTo(0, 0); }
+  else if (view === 'form') {
+    if (isFormDirty()) { pushSub(); askSaveBeforeLeave(); } else doBack();
+  } else if (view === 'minutes' || view === 'courts') {
+    doBack();
+  } else if (view === 'court') {
+    courtPushed = false;
+    view = courtFrom === 'form' ? 'form' : 'courts';
+    render();
+    window.scrollTo(0, 0);
+  }
+});
+
+window.addEventListener('click', function(e) {
+  var m = $('#modalDrive');
+  if (e.target === m) tancarModalDrive();
+});
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
