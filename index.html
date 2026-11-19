@@ -190,10 +190,15 @@ var tokenClient = null;
 var accessToken = null;
 var tokenExp = 0;
 
-// El token de Drive només viu a la sessió de la pestanya i amb caducitat
+var silentMode = false;   // s'està renovant el token sense que l'usuari ho demani
+var silentFails = 0;      // intents de renovació fallits en aquesta sessió
+var lastSilent = 0;
+var drivePending = false; // hi ha canvis locals pendents de pujar a Drive
+
+// El token de Drive (dura ~1 hora) es guarda amb caducitat; passada l'hora es renova amb un toc
 (function() {
   try {
-    var t = JSON.parse(sessionStorage.getItem('gdrive_tok') || 'null');
+    var t = JSON.parse(localStorage.getItem('gdrive_tok') || sessionStorage.getItem('gdrive_tok') || 'null');
     if (t && t.exp > Date.now()) { accessToken = t.v; tokenExp = t.exp; }
     localStorage.removeItem('gdrive_token'); // neteja de la versió antiga
   } catch (e) {}
@@ -1025,33 +1030,82 @@ function dToken() {
 function dropToken(rerender) {
   accessToken = null;
   tokenExp = 0;
-  try { sessionStorage.removeItem('gdrive_tok'); } catch (e) {}
+  try { localStorage.removeItem('gdrive_tok'); sessionStorage.removeItem('gdrive_tok'); } catch (e) {}
   if (rerender !== false && (view === 'calendar' || view === 'list')) render();
 }
 
+function getTokenClient() {
+  if (tokenClient) return tokenClient;
+  if (typeof google === 'undefined' || !google.accounts) return null;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: onTokenResponse,
+    error_callback: function() { silentFails++; silentMode = false; }
+  });
+  return tokenClient;
+}
+
+function onTokenResponse(res) {
+  var wasSilent = silentMode;
+  silentMode = false;
+  if (res && res.access_token) {
+    accessToken = res.access_token;
+    tokenExp = Date.now() + Math.max(60, (Number(res.expires_in) || 3600) - 60) * 1000;
+    try {
+      localStorage.setItem('gdrive_tok', JSON.stringify({ v: accessToken, exp: tokenExp }));
+      localStorage.setItem('gdrive_linked', '1');
+    } catch (e) {}
+    silentFails = 0;
+    var onList = (view === 'calendar' || view === 'list');
+    if (onList) render();
+    // si s'està editant un judici no es comprova la còpia (podria refrescar la pantalla)
+    var after = onList ? syncDriveAuto(false) : Promise.resolve();
+    after.then(function() {
+      if (drivePending) { drivePending = false; saveToDrive(true); }
+    });
+  } else if (res && res.error) {
+    silentFails++;
+    if (!wasSilent) toast('No s\'ha pogut connectar amb Google.');
+  }
+}
+
 function connectDrive() {
-  if (typeof google === 'undefined' || !google.accounts) {
+  var tc = getTokenClient();
+  if (!tc) {
     alert('S\'està carregant el servei de Google. Prova-ho en uns segons.');
     return;
   }
-  if (!tokenClient) {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      callback: function(res) {
-        if (res.access_token) {
-          accessToken = res.access_token;
-          tokenExp = Date.now() + Math.max(60, (Number(res.expires_in) || 3600) - 60) * 1000;
-          try { sessionStorage.setItem('gdrive_tok', JSON.stringify({ v: accessToken, exp: tokenExp })); } catch (e) {}
-          render();
-          syncDriveAuto(false);
-        } else if (res.error) {
-          toast('No s\'ha pogut connectar amb Google.');
-        }
-      }
-    });
-  }
-  tokenClient.requestAccessToken();
+  silentMode = false;
+  tc.requestAccessToken();
+}
+
+// Renovació sense pantalles de consentiment: Google ja té el permís donat
+function silentReconnect() {
+  if (localStorage.getItem('gdrive_linked') !== '1' || dToken() || silentFails >= 2) return;
+  var tc = getTokenClient();
+  if (!tc) return;
+  silentMode = true;
+  try { tc.requestAccessToken({ prompt: '' }); } catch (e) { silentMode = false; }
+}
+
+// Els navegadors només deixen obrir la renovació dins d'un toc de l'usuari
+function onTapReconnect() {
+  if (Date.now() - lastSilent < 60000) return;
+  if (localStorage.getItem('gdrive_linked') !== '1' || dToken()) return;
+  lastSilent = Date.now();
+  silentReconnect();
+}
+
+function disconnectDrive() {
+  if (!confirm('Vols desconnectar Google Drive d\'aquest dispositiu? Les dades locals no s\'esborren.')) return;
+  var t = accessToken;
+  try { if (t && typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(t, function() {}); } catch (e) {}
+  try { localStorage.removeItem('gdrive_linked'); } catch (e) {}
+  drivePending = false;
+  silentFails = 0;
+  dropToken();
+  toast('Drive desconnectat.');
 }
 
 async function driveFetch(url, opts) {
@@ -1209,6 +1263,7 @@ async function syncDriveAuto(manual) {
 
 async function saveToDrive(silent) {
   if (!dToken()) {
+    if (localStorage.getItem('gdrive_linked') === '1') drivePending = true;
     if (!silent) toast('Connecta primer el teu compte de Google Drive.');
     return;
   }
@@ -1753,9 +1808,12 @@ function render() {
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="saveToDrive(false)">☁️ Desar / Actualitzar a Drive</button>';
       html += '<button onclick="syncDriveAuto(true)">🔄 Comprovar canvis ara</button>';
+      html += '<button onclick="disconnectDrive()">Desconnectar</button>';
       html += '</div>';
     } else {
-      html += '<p class="mu" style="margin-top:0">Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.</p>';
+      html += '<p class="mu" style="margin-top:0">' + (localStorage.getItem('gdrive_linked') === '1'
+        ? 'La sessió de Drive ha caducat. Es renova sola en tocar qualsevol botó, o la pots renovar ara amb «Connectar».'
+        : 'Connecta el teu compte de Google Drive per sincronitzar les teves dades automàticament.') + '</p>';
       html += '<div class="bar" style="margin-top:8px">';
       html += '<button class="pri" onclick="connectDrive()">🔗 Connectar amb Google Drive</button>';
       html += '<button onclick="obrirModalDrive()">ℹ️ Info / Sol·licitar accés</button>';
@@ -2163,6 +2221,8 @@ function doBack() {
   pendingMinuteId = null;
   render();
 }
+
+document.addEventListener('click', onTapReconnect, true);
 
 window.addEventListener('popstate', function() {
   if (subDepth > 0) subDepth--;
